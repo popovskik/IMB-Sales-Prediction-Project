@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Quarto
+/.quarto/
+analysis/report_files/
+*_files/
+/_site/
+
+# Node / Vite
+node_modules/
+app/dist/
+.vercel/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Large intermediate outputs (NOT the source CSVs or trained models — those are committed)
+*.tmp
+*.log
+
+# NOTE: analysis/data/pizza_sales/*.csv and analysis/models/*.joblib are committed
+# on purpose — the app and a clean-checkout run depend on them.
