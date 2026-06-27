@@ -10,6 +10,7 @@ format:
     code-fold: true
     code-tools: true
     theme: cosmo
+    embed-resources: true
     fig-width: 8
     fig-height: 4
 jupyter: python3
