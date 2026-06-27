@@ -100,6 +100,7 @@ tr.best td { background: var(--orange-soft); font-weight: 600; }
   width: 15px; height: 15px; border-radius: 999px; background: var(--line);
   color: var(--ink-2); font-size: 10px; font-weight: 700; font-style: normal;
   font-family: Inter, sans-serif; display: inline-flex; align-items: center; justify-content: center;
+  text-transform: none; letter-spacing: normal;
 }
 .infotip:hover .infotip-icon, .infotip:focus-within .infotip-icon { background: var(--orange-soft); color: var(--orange-deep); }
 .infotip-bubble {
@@ -107,6 +108,7 @@ tr.best td { background: var(--orange-soft); font-weight: 600; }
   width: 240px; background: var(--ink); color: #fff; padding: 10px 12px;
   border-radius: 10px; font-size: 12px; line-height: 1.45; font-weight: 400;
   text-align: left; box-shadow: var(--shadow); z-index: 60;
+  text-transform: none; letter-spacing: normal;
   opacity: 0; visibility: hidden; transition: opacity .12s ease;
 }
 .infotip:hover .infotip-bubble, .infotip:focus-within .infotip-bubble { opacity: 1; visibility: visible; }

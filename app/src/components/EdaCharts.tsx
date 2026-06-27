@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer,
   Tooltip, XAxis, YAxis,
@@ -88,6 +88,7 @@ function Panel({ title, tip, children }: { title: string; tip: ReactNode; childr
 function Heatmap({ heat }: { heat: Charts["heatmap"] }) {
   const flat = heat.values.flat().filter((v): v is number => v != null);
   const max = Math.max(...flat, 1);
+  const [hover, setHover] = useState<{ row: string; col: string; v: number | null } | null>(null);
   return (
     <div style={{ overflowX: "auto" }}>
       <table style={{ borderCollapse: "separate", borderSpacing: 2, minWidth: 360 }}>
@@ -103,9 +104,14 @@ function Heatmap({ heat }: { heat: Charts["heatmap"] }) {
               <td style={{ fontSize: 11, color: "var(--ink-2)", paddingRight: 6 }}>{row}</td>
               {heat.values[i].map((v, j) => {
                 const a = v == null ? 0 : v / max;
+                const active = hover && hover.row === row && hover.col === heat.cols[j];
                 return (
-                  <td key={j} title={v == null ? "n/a" : `$${Math.round(v)}`}
-                      style={{ width: 26, height: 22, borderRadius: 4, padding: 0,
+                  <td key={j}
+                      title={v == null ? "closed / no data" : `$${Math.round(v).toLocaleString()}`}
+                      onMouseEnter={() => setHover({ row, col: heat.cols[j], v })}
+                      onMouseLeave={() => setHover(null)}
+                      style={{ width: 26, height: 22, borderRadius: 4, padding: 0, cursor: "pointer",
+                               outline: active ? "2px solid var(--ink)" : "none",
                                background: `rgba(255,72,0,${0.12 + a * 0.85})` }} />
                 );
               })}
@@ -119,7 +125,14 @@ function Heatmap({ heat }: { heat: Charts["heatmap"] }) {
         <span style={{ width: 90, height: 10, borderRadius: 5,
                        background: "linear-gradient(90deg, rgba(255,72,0,0.12), rgba(255,72,0,0.97))" }} />
         <span>Higher</span>
-        <span style={{ marginLeft: 4 }}>· avg daily revenue (${Math.round(max).toLocaleString()} max)</span>
+        <span style={{ marginLeft: 4 }}>· avg daily revenue</span>
+      </div>
+      {/* instant hover readout */}
+      <div style={{ marginTop: 6, fontSize: 13, color: "var(--ink-2)", minHeight: 20 }}>
+        {hover
+          ? <><strong style={{ color: "var(--ink)" }}>{hover.row} · {hover.col}:</strong>{" "}
+              {hover.v == null ? "closed / no data" : `$${Math.round(hover.v).toLocaleString()} avg revenue`}</>
+          : <span style={{ color: "var(--ink-3)" }}>Hover a cell to see its average daily revenue.</span>}
       </div>
     </div>
   );

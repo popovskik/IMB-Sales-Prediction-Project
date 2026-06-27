@@ -4,13 +4,15 @@ import { InfoTip } from "./InfoTip";
 
 const n = (v: number | null | undefined, d = 3) => (v == null ? "—" : v.toFixed(d));
 
-/** A table header cell with an explanatory bubble for the statistical term. */
+/** A table header cell with an explanatory bubble for the statistical term.
+ *  Opens downward (into the rows) because the table sits in an overflow-x wrapper
+ *  that would clip an upward bubble. */
 function Th({ children, tip, align = "center" }: { children: ReactNode; tip: ReactNode; align?: "center" | "end" }) {
   return (
     <th>
       <span style={{ display: "inline-flex", alignItems: "center" }}>
         {children}
-        <InfoTip placement="top" align={align}>{tip}</InfoTip>
+        <InfoTip placement="bottom" align={align}>{tip}</InfoTip>
       </span>
     </th>
   );
