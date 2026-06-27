@@ -9,6 +9,11 @@ Predicting a pizza restaurant's **daily revenue** (regression) and flagging **hi
 - **Dashboard (Vercel):** _pending deploy — add URL here_
 - **Prediction API (Railway):** _pending deploy — add URL here_
 
+![Dashboard](docs/dashboard-screenshot.png)
+
+*Verified end-to-end locally: the React dashboard calls the FastAPI `/predict` endpoint and
+renders a live prediction (e.g. 2015-07-03 → $2,678, High demand, 79% confidence).*
+
 ## Deliverables
 
 | # | Deliverable | Location |
