@@ -6,7 +6,7 @@ Predicting a pizza restaurant's **daily revenue** (regression) and flagging **hi
 
 ## Live app
 
-- **Dashboard (Vercel):** _pending deploy — add URL here_
+- **Dashboard (Vercel):** https://imb-sales-prediction-project.vercel.app
 - **Prediction API (Railway):** https://imb-sales-prediction-project-production.up.railway.app — try [`/docs`](https://imb-sales-prediction-project-production.up.railway.app/docs) or [`/health`](https://imb-sales-prediction-project-production.up.railway.app/health)
 
 ![Dashboard](docs/dashboard-screenshot.png)
