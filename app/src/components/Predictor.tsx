@@ -1,0 +1,100 @@
+import { useState } from "react";
+import { fallbackFromBaked, predict } from "../api";
+import type { DailyRecord, PredictResponse } from "../types";
+
+type Status = "idle" | "loading" | "live" | "fallback";
+
+export function Predictor({ daily }: { daily: DailyRecord[] }) {
+  const [date, setDate] = useState("2015-07-03");
+  const [status, setStatus] = useState<Status>("idle");
+  const [result, setResult] = useState<PredictResponse | null>(null);
+  const [note, setNote] = useState<string>("");
+
+  const valid = /^\d{4}-\d{2}-\d{2}$/.test(date);
+
+  async function run() {
+    if (!valid) return;
+    setStatus("loading");
+    setNote("");
+    try {
+      const r = await predict(date);
+      setResult(r);
+      setStatus("live");
+    } catch {
+      // API unreachable or cold-starting — fall back to the baked predictions.
+      const fb = fallbackFromBaked(date, daily);
+      if (fb) {
+        setResult(fb);
+        setStatus("fallback");
+        setNote("Live predictor is waking up or unavailable — showing the pre-computed estimate for this date.");
+      } else {
+        setResult(null);
+        setStatus("fallback");
+        setNote("Live predictor is unavailable and no pre-computed value exists for that date. Try a 2015 date.");
+      }
+    }
+  }
+
+  return (
+    <section className="card">
+      <div className="eyebrow">Predictor</div>
+      <h2 style={{ fontSize: 20, margin: "4px 0 16px" }}>Forecast a day</h2>
+
+      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <input
+          type="date"
+          value={date}
+          min="2015-01-01"
+          max="2015-12-31"
+          onChange={(e) => setDate(e.target.value)}
+          aria-label="Date to forecast"
+        />
+        <button className="btn" onClick={run} disabled={!valid || status === "loading"}>
+          {status === "loading" ? "Forecasting…" : "Forecast"}
+        </button>
+        {!valid && <span style={{ color: "var(--red)", fontSize: 13 }}>Pick a valid date.</span>}
+      </div>
+
+      {status === "loading" && (
+        <p style={{ color: "var(--ink-2)", marginTop: 14 }}>
+          Waking the model — a free-tier server can take up to ~25s on the first request…
+        </p>
+      )}
+
+      {result && (status === "live" || status === "fallback") && (
+        <div
+          style={{
+            marginTop: 18, padding: 18, borderRadius: "var(--r-md)",
+            background: status === "fallback" ? "var(--card-muted)" : "var(--orange-soft)",
+            border: status === "fallback" ? "1px dashed var(--ink-3)" : "1px solid var(--orange)",
+          }}
+        >
+          <div className="eyebrow">Predicted daily revenue</div>
+          <div style={{ fontFamily: "Poppins, sans-serif", fontSize: 40, fontWeight: 800, color: "var(--ink)" }}>
+            ${Math.round(result.predicted_revenue).toLocaleString()}
+          </div>
+          <div style={{ marginTop: 8, display: "flex", gap: 12, alignItems: "center" }}>
+            <span className={result.high_demand.label === "High" ? "badge badge-high" : "badge badge-normal"}>
+              {result.high_demand.label === "High" ? "High demand" : "Normal demand"}
+            </span>
+            {result.high_demand.probability != null && (
+              <span style={{ color: "var(--ink-2)", fontSize: 13 }}>
+                {Math.round(result.high_demand.probability * 100)}% confidence
+              </span>
+            )}
+            {status === "fallback" && (
+              <span className="badge" style={{ background: "var(--line)", color: "var(--ink-2)" }}>offline estimate</span>
+            )}
+          </div>
+          {result.out_of_training_range && (
+            <p style={{ color: "var(--amber)", fontSize: 13, marginTop: 10, marginBottom: 0 }}>
+              Note: this date is outside the model's 2015 training year — treat as a rough extrapolation.
+            </p>
+          )}
+        </div>
+      )}
+
+      {note && <p style={{ color: "var(--ink-2)", fontSize: 13, marginTop: 12, marginBottom: 0 }}>{note}</p>}
+    </section>
+  );
+}

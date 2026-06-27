@@ -1,0 +1,48 @@
+/* Around design tokens — copied verbatim from
+   Around-Code/packages/design-system/tokens/tokens.css so these components port
+   into Around's Sales Statistics screen with no restyle. Cool neutral ramp +
+   Pantone Orange 021 C (#ff4800), Poppins display + Inter body. */
+
+:root {
+  /* Surfaces */
+  --canvas: #fcfcfd;
+  --card: #ffffff;
+  --card-muted: #f9fafb;
+  --sidebar: #0a0a0b;
+  --sidebar-elev: #1a1a1c;
+
+  /* Lines */
+  --line: #e4e7ec;
+  --line-soft: #f2f4f7;
+
+  /* Ink */
+  --ink: #101828;
+  --ink-2: #475467;
+  --ink-3: #98a2b3;
+
+  /* Brand (Pantone Orange 021 C) */
+  --orange: #ff4800;
+  --orange-deep: #cc3a00;
+  --orange-soft: #fff0ea;
+
+  /* Semantic */
+  --green: #1c8a4e;  --green-soft: #e7f6ed;
+  --amber: #8c5a00;  --amber-soft: #fdf1d8;
+  --red: #c2392c;    --red-soft: #fdeceb;
+  --blue: #2360c4;   --blue-soft: #eaf1fd;
+  --violet: #6d4bd0; --violet-soft: #f0ebfb;
+
+  /* Shape */
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --shadow: 0 1px 2px rgba(16,24,40,0.04), 0 8px 24px rgba(16,24,40,0.05);
+  --shadow-soft: 0 1px 2px rgba(16,24,40,0.04);
+
+  /* Layout */
+  --sidebar-w: 252px;
+  --content-max: 1080px;
+
+  /* Focus ring (brand orange @ 32%) */
+  --focus-ring: rgba(255,72,0,0.32);
+}
