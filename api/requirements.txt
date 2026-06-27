@@ -1,0 +1,11 @@
+# API runtime. scikit-learn / xgboost / joblib MUST match analysis/requirements.txt
+# exactly so the serialized .joblib models deserialize without version skew.
+fastapi==0.121.2
+uvicorn[standard]==0.40.0
+pandas==3.0.3
+numpy==2.5.0
+scikit-learn==1.9.0
+xgboost==3.3.0
+joblib==1.5.3
+pytest==9.1.1
+httpx==0.28.1

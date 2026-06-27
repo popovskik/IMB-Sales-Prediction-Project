@@ -1,0 +1,9 @@
+# Railway deploy config. The build copies the trained models into api/models/ so
+# the deployed root is self-contained (Railway builds the api/ directory only).
+[build]
+builder = "nixpacks"
+buildCommand = "mkdir -p models && cp ../analysis/models/daily_revenue.joblib ../analysis/models/high_demand.joblib models/"
+
+[deploy]
+startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
+restartPolicyType = "on_failure"
