@@ -1,0 +1,76 @@
+---
+title: "Restaurant Demand Analytics"
+subtitle: "Predicting daily revenue and busy days from one year of pizza orders"
+author: "Aleksandar Popovski · IMB MADA 2026"
+format:
+  revealjs:
+    theme: simple
+    embed-resources: true
+    slide-number: true
+    transition: fade
+---
+
+## The problem
+
+A restaurant wants to plan **staffing, inventory, and purchasing** *ahead* of demand.
+
+Two questions, answered from the **calendar alone**:
+
+- **How much will we earn today?** (daily revenue)
+- **Will today be busy?** (a high-demand day)
+
+::: {.notes}
+One year of 2015 pizza-sales data, ~21,000 orders aggregated to 365 days.
+:::
+
+## The data
+
+- **Maven Pizza Place Sales** — 4 linked tables, ~48,600 line items, ~21,350 orders.
+- Aggregated to **one row per day** for 2015 (365 days).
+- Two cleaning findings worth noting:
+  - one file was in a non-standard text encoding (fixed),
+  - **7 closed days** (zero orders) — including Christmas.
+
+## The approach
+
+![](../architecture.png){width="85%"}
+
+**Train once, offline → serve a saved model.** The app loads the trained model and predicts; it never re-trains while running.
+
+## How we kept it honest
+
+- Predict from the **date only** — no peeking at the future (no data leakage).
+- Split the year **in time order**: train on Jan–Sep, test on Nov–Dec.
+- Compare a full **ladder** of models against a simple baseline — and **keep the baseline in the table**.
+- Report **cross-validation** as the fair metric, because a single year means the test months are calendar positions the model never saw.
+
+## Finding 1 — the week has a strong rhythm
+
+- **Weekends and Fridays** are reliably the busiest, highest-earning days.
+- A mild seasonal lift in **summer and year-end**.
+- This is the **most dependable signal** in the data.
+
+## Finding 2 — busy days *can* be predicted
+
+- From the calendar alone, the model flags **high-demand days clearly better than guessing** (ROC-AUC ≈ 0.74).
+- A useful, no-integration-needed **planning aid** for shift levels.
+- A lesson in metrics: a "predict busy every day" dummy looks good on one score (F1) but is **no better than a coin flip** on the honest one (AUC).
+
+## Finding 3 — exact revenue is hard
+
+- Day-to-day revenue swings are large; one year of data caps accuracy.
+- The calendar gives a **ballpark**, not a precise dollar figure.
+- This is a **data limitation, not a modelling mistake** — and it points to the fix.
+
+## Recommendations
+
+1. **Staff and stock to the weekly pattern** — heaviest Fri–Sun.
+2. **Use the busy-day forecast** for shift planning.
+3. **Invest in more data** — more years, plus promotions, weather, and events — to make revenue forecasting precise.
+
+## Thank you
+
+- **Live dashboard & predictor**, reproducible **analysis report**, and a public repo.
+- Built with an AI-assisted workflow — every part verified and explainable.
+
+*github.com/popovskik/IMB-Sales-Prediction-Project*

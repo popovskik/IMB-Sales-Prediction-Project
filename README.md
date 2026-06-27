@@ -6,8 +6,19 @@ Predicting a pizza restaurant's **daily revenue** (regression) and flagging **hi
 
 ## Live app
 
-- **Dashboard:** _(Vercel link — added in U9/U11)_
-- **Prediction API:** _(Railway link — added in U8)_
+- **Dashboard (Vercel):** _pending deploy — add URL here_
+- **Prediction API (Railway):** _pending deploy — add URL here_
+
+## Deliverables
+
+| # | Deliverable | Location |
+|---|---|---|
+| D0 | Solution architecture | [`architecture.png`](architecture.png) · [`architecture.md`](architecture.md) |
+| D1 | Analysis report (Quarto → HTML) | [`analysis/report.qmd`](analysis/report.qmd) → `report.html` |
+| D2 | Deployed app | `app/` (React/Vercel) + `api/` (FastAPI/Railway) |
+| D3 | AI-workflow reflection | [`docs/ai-reflection.md`](docs/ai-reflection.md) |
+| D4 | Presentation slides | [`slides/presentation.qmd`](slides/presentation.qmd) → `presentation.html` |
+| D5 | Executive summary | [`docs/executive-summary.md`](docs/executive-summary.md) |
 
 ## What it does
 
@@ -20,7 +31,11 @@ Both models use only calendar features derived from the date (no leakage). The p
 
 ## Architecture
 
-_(architecture.png embedded here in U11; source in `architecture.md`)_
+![Solution architecture](architecture.png)
+
+Training happens **offline, once**: the CSVs are joined, aggregated to 365 day-rows, and used
+to train two models saved as `.joblib`. At **runtime**, the FastAPI service loads them and the
+React dashboard calls `/predict`; no training happens live. See [`architecture.md`](architecture.md).
 
 ## Repository layout
 
