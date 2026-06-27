@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { fallbackFromBaked, predict } from "../api";
 import type { DailyRecord, PredictResponse } from "../types";
+import { InfoTip } from "./InfoTip";
 
 type Status = "idle" | "loading" | "live" | "fallback";
 
@@ -69,7 +70,10 @@ export function Predictor({ daily }: { daily: DailyRecord[] }) {
             border: status === "fallback" ? "1px dashed var(--ink-3)" : "1px solid var(--orange)",
           }}
         >
-          <div className="eyebrow">Predicted daily revenue</div>
+          <div className="eyebrow" style={{ display: "flex", alignItems: "center" }}>
+            Predicted daily revenue
+            <InfoTip>The model's estimate of total revenue for the chosen date, based only on the calendar (weekday, month, season). A planning ballpark, not a guarantee.</InfoTip>
+          </div>
           <div style={{ fontFamily: "Poppins, sans-serif", fontSize: 40, fontWeight: 800, color: "var(--ink)" }}>
             ${Math.round(result.predicted_revenue).toLocaleString()}
           </div>
@@ -78,8 +82,9 @@ export function Predictor({ daily }: { daily: DailyRecord[] }) {
               {result.high_demand.label === "High" ? "High demand" : "Normal demand"}
             </span>
             {result.high_demand.probability != null && (
-              <span style={{ color: "var(--ink-2)", fontSize: 13 }}>
+              <span style={{ color: "var(--ink-2)", fontSize: 13, display: "flex", alignItems: "center" }}>
                 {Math.round(result.high_demand.probability * 100)}% confidence
+                <InfoTip>How sure the model is that this is a high-demand day. 50% is a coin-flip; closer to 100% means more confident.</InfoTip>
               </span>
             )}
             {status === "fallback" && (

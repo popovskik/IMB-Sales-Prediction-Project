@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { Charts } from "../types";
+import { InfoTip } from "./InfoTip";
 
 const money = (v: number) => `$${Math.round(v).toLocaleString()}`;
 
@@ -35,27 +36,38 @@ export function Layout({ children, summary }: { children: ReactNode; summary?: C
           <h1 style={{ fontSize: 28, marginTop: 4 }}>Sales Statistics</h1>
         </header>
 
-        {summary && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
-            <Stat label="Total revenue" value={money(summary.total_revenue)} />
-            <Stat label="Avg daily revenue" value={money(summary.mean_daily_revenue)} />
-            <Stat label="Avg daily orders" value={summary.mean_daily_orders.toFixed(0)} />
-            <Stat label="High-demand days" value={`${Math.round(summary.high_demand_share * 100)}%`} />
-          </div>
-        )}
+        {/* Stats and the sections below share ONE max-width container so their
+            right edges line up (the stat row used to run wider than the cards below). */}
+        <div className="content">
+          {summary && (
+            <div className="stat-grid">
+              <Stat label="Total revenue" value={money(summary.total_revenue)}
+                    tip={<>Total money taken across the whole year (2015) — every order's <strong>price × quantity</strong>, summed.</>} />
+              <Stat label="Avg daily revenue" value={money(summary.mean_daily_revenue)}
+                    tip={<>The average day's revenue across all 365 days. A typical day brings in about this much.</>} />
+              <Stat label="Avg daily orders" value={summary.mean_daily_orders.toFixed(0)}
+                    tip={<>The average number of orders placed per day across the year.</>} />
+              <Stat label="High-demand days" value={`${Math.round(summary.high_demand_share * 100)}%`} align="end"
+                    tip={<>Share of days we call <strong>"high demand"</strong> — days whose order count is above the year's average. These are the days to staff and stock up for.</>} />
+            </div>
+          )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: "var(--content-max)" }}>
-          {children}
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            {children}
+          </div>
         </div>
       </main>
     </div>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, tip, align }: { label: string; value: string; tip: ReactNode; align?: "center" | "end" }) {
   return (
     <div className="card" style={{ padding: 16 }}>
-      <div className="eyebrow">{label}</div>
+      <div className="eyebrow" style={{ display: "flex", alignItems: "center" }}>
+        {label}
+        <InfoTip placement="bottom" align={align}>{tip}</InfoTip>
+      </div>
       <div style={{ fontFamily: "Poppins, sans-serif", fontSize: 24, fontWeight: 700, marginTop: 6 }}>{value}</div>
     </div>
   );

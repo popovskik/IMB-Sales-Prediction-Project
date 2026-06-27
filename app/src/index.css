@@ -74,3 +74,48 @@ th, td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--li
 th:first-child, td:first-child { text-align: left; }
 thead th { color: var(--ink-2); font-weight: 600; border-bottom: 1px solid var(--line); }
 tr.best td { background: var(--orange-soft); font-weight: 600; }
+
+/* ---- Responsive layout grids ---- */
+.content { width: 100%; max-width: var(--content-max); margin: 0; }
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+@media (max-width: 760px) { .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.eda-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 28px;
+  align-items: start;
+}
+@media (max-width: 720px) { .eda-grid { grid-template-columns: 1fr; } }
+
+/* ---- Info tooltip (hover/focus bubble explaining a number or concept) ---- */
+.infotip { position: relative; display: inline-flex; align-items: center; margin-left: 6px; cursor: help; vertical-align: middle; }
+.infotip-icon {
+  width: 15px; height: 15px; border-radius: 999px; background: var(--line);
+  color: var(--ink-2); font-size: 10px; font-weight: 700; font-style: normal;
+  font-family: Inter, sans-serif; display: inline-flex; align-items: center; justify-content: center;
+}
+.infotip:hover .infotip-icon, .infotip:focus-within .infotip-icon { background: var(--orange-soft); color: var(--orange-deep); }
+.infotip-bubble {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  width: 240px; background: var(--ink); color: #fff; padding: 10px 12px;
+  border-radius: 10px; font-size: 12px; line-height: 1.45; font-weight: 400;
+  text-align: left; box-shadow: var(--shadow); z-index: 60;
+  opacity: 0; visibility: hidden; transition: opacity .12s ease;
+}
+.infotip:hover .infotip-bubble, .infotip:focus-within .infotip-bubble { opacity: 1; visibility: visible; }
+.infotip-bubble strong { color: #fff; font-weight: 700; }
+.infotip--top .infotip-bubble { bottom: calc(100% + 8px); }
+.infotip--bottom .infotip-bubble { top: calc(100% + 8px); }
+.infotip-bubble::after { content: ""; position: absolute; left: 50%; transform: translateX(-50%); border: 6px solid transparent; }
+.infotip--top .infotip-bubble::after { top: 100%; border-top-color: var(--ink); }
+.infotip--bottom .infotip-bubble::after { bottom: 100%; border-bottom-color: var(--ink); }
+/* keep edge bubbles from clipping off-screen */
+.infotip--end .infotip-bubble { left: auto; right: 0; transform: none; }
+.infotip--end .infotip-bubble::after { left: auto; right: 8px; transform: none; }

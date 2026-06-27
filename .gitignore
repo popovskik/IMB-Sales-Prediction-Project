@@ -30,3 +30,6 @@ Thumbs.db
 
 # NOTE: analysis/data/pizza_sales/*.csv and analysis/models/*.joblib are committed
 # on purpose — the app and a clean-checkout run depend on them.
+
+# local dev env
+.env*.local
