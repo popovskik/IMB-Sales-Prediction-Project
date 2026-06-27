@@ -1,0 +1,281 @@
+---
+title: "Restaurant Demand Analytics: Predicting Daily Revenue and High-Demand Days"
+subtitle: "IMB MADA 2026 — End-to-End Machine Learning Capstone"
+author: "Aleksandar Popovski"
+date: 2026-06-27
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-tools: true
+    theme: cosmo
+    fig-width: 8
+    fig-height: 4
+jupyter: python3
+execute:
+  warning: false
+  echo: true
+---
+
+```{python}
+#| label: setup
+#| code-fold: true
+import json
+from pathlib import Path
+
+import pandas as pd
+
+from src.data import build_daily
+from src.eda import (chart_data, fig_heatmap, fig_revenue_by_dow,
+                     fig_revenue_by_month, fig_revenue_distribution, summary_stats)
+from src import augment
+
+MODELS = Path("models")
+leaderboard = json.loads((MODELS / "leaderboard.json").read_text())
+artifacts = json.loads((MODELS / "report_artifacts.json").read_text())
+
+daily = build_daily()
+summary = summary_stats(daily)
+```
+
+# 1. The question
+
+A pizza restaurant wants to plan **staffing, inventory, and purchasing** ahead of demand.
+Two operational questions drive this study, using one full year (2015) of order data:
+
+- **Regression — how much will we take today?** Predict `Daily_Revenue`, the sum of
+  `price × quantity` across all of a day's orders.
+- **Classification — will today be busy?** Predict `High_Demand_Day`: a day whose order
+  count exceeds the year's mean daily order count.
+
+Both targets are aggregated to **one row per calendar day**, and both models use **only
+features derived from the date** — so a prediction can be made for any future day with no
+other information.
+
+# 2. The data
+
+The [Maven Pizza Place Sales](https://mavenanalytics.io/data-playground/pizza-place-sales)
+dataset is four linked tables: `orders`, `order_details`, `pizzas`, and `pizza_types`
+(~48,620 line items across ~21,350 orders). We join them, compute line revenue, and
+aggregate to a daily series.
+
+```{python}
+#| label: data-overview
+print(f"Calendar days (2015):       {summary['n_days']}")
+print(f"Closed (zero-order) days:   {summary['closed_days']}")
+print(f"Total revenue:              ${summary['total_revenue']:,.0f}")
+print(f"Mean daily revenue:         ${summary['mean_daily_revenue']:,.0f}")
+print(f"Mean daily orders:          {summary['mean_daily_orders']:.1f}")
+print(f"High-demand days (share):   {summary['high_demand_share']:.1%}")
+daily.head()
+```
+
+**Two data-cleaning decisions worth flagging (honest data handling):**
+
+1. **Encoding.** `pizza_types.csv` ships as **Windows-1252**, not UTF-8 (curly
+   apostrophes in ingredient names such as *'Nduja*). Reading it as UTF-8 raises a
+   `UnicodeDecodeError`; we read it with the correct `cp1252` encoding.
+2. **Closed days.** Seven 2015 dates have **zero orders** — including 25 December
+   (Christmas) and four consecutive October Mondays. We reindex the series to the full
+   calendar and treat these as genuine zero-revenue closed days rather than dropping them,
+   so the daily index stays contiguous (required by the lag features below). The October
+   Monday pattern is flagged as a possible data-collection gap rather than a confirmed
+   closure.
+
+# 3. Exploratory analysis
+
+Daily revenue is driven mostly by **day-of-week** and **seasonal** structure.
+
+```{python}
+#| label: fig-month
+#| fig-cap: "Mean daily revenue by month — a mild seasonal rise into the summer and year-end."
+fig_revenue_by_month(daily);
+```
+
+```{python}
+#| label: fig-dow
+#| fig-cap: "Mean daily revenue by day of week — weekends (and Fridays) run higher."
+fig_revenue_by_dow(daily);
+```
+
+```{python}
+#| label: fig-heatmap
+#| fig-cap: "Day-of-week x month heatmap — the weekly rhythm is stable across the year."
+fig_heatmap(daily);
+```
+
+```{python}
+#| label: fig-dist
+#| fig-cap: "Distribution of daily revenue. The spike near zero is the closed days."
+fig_revenue_distribution(daily);
+```
+
+## 3a. Synthetic enrichment (clearly labelled — not used for modelling)
+
+> **Synthetic data.** The raw dataset has no customer, table, or server identifiers.
+> With the professor's approval, we generate them to illustrate the kind of analytics a
+> real restaurant dashboard would show. **None of this synthetic data enters model
+> training** — the two models are fit solely on the real date-derived features.
+
+```{python}
+#| label: synthetic-eda
+aug = augment.augment_orders()
+freq = augment.customer_frequency(aug)
+util = augment.table_utilization(aug)
+thru = augment.server_throughput(aug)
+print("Customer base (synthetic):")
+print(freq.to_string(index=False))
+print("\nOrders per server (synthetic, shift-constrained):")
+print(thru.to_string(index=False))
+```
+
+# 4. Feature engineering (leakage-safe)
+
+Two feature sets are built from the date (`src/features.py`):
+
+- **Served set** — calendar parts (`day_of_week`, `month`, `week_of_year`, `day_of_year`,
+  `quarter`), boolean flags (`is_weekend`, `is_month_start`, `is_month_end`), and
+  **cyclical** `sin/cos` encodings of weekday and month (so December sits next to January).
+  These are fully determined by the date, so the deployed API can compute them for any day.
+- **Full set** — adds **past-only** lag/rolling features (`revenue_lag_1`, `revenue_lag_7`,
+  `rolling_revenue_7d`, …). Each uses `shift`, and the rolling mean uses `shift(1)` first so
+  **today never leaks into its own feature**. Used only for an offline comparison, since a
+  date-only predictor has no "yesterday" at serve time.
+
+**Leakage controls.** Scalers and the feature selector are fit **inside the training split
+only** (sklearn `Pipeline`), and the data is split **chronologically** — never shuffled.
+
+```{python}
+#| label: split
+print("Selected regression features:", artifacts["selected_features"]["regression"])
+print("Selected classification features:", artifacts["selected_features"]["classification"])
+print("\nSplit: train = Jan–Sep, validation = Oct, test = Nov–Dec (time-ordered).")
+```
+
+# 5. Models and the honest leaderboard
+
+Each task trains a full ladder — **Dummy → linear → Decision Tree → tuned XGBoost** — with
+XGBoost tuned by `RandomizedSearchCV` over a **`TimeSeriesSplit`** (so tuning never sees the
+future). We report **two** numbers per model: the **TimeSeriesSplit CV** score (the fairer
+estimate) and the **Nov–Dec hold-out** score.
+
+```{python}
+#| label: leaderboard-tables
+#| code-fold: true
+def reg_table(rows):
+    out = [{"Model": r["model"], "CV R²": round(r["cv_r2"], 3),
+            "Test R²": round(r["test"]["r2"], 3), "Test MAE": round(r["test"]["mae"], 1),
+            "Test RMSE": round(r["test"]["rmse"], 1), "Train R²": round(r["train_r2"], 3)}
+           for r in rows if r["task"] == "regression"]
+    return pd.DataFrame(out)
+
+def clf_table(rows):
+    out = [{"Model": r["model"], "CV F1": round(r["cv_f1"], 3),
+            "Test Acc": round(r["test"]["accuracy"], 3), "Test F1": round(r["test"]["f1"], 3),
+            "Test ROC-AUC": (None if r["test"]["roc_auc"] is None else round(r["test"]["roc_auc"], 3))}
+           for r in rows if r["task"] == "classification"]
+    return pd.DataFrame(out)
+
+reg_table(leaderboard)
+```
+
+```{python}
+#| label: clf-leaderboard
+clf_table(leaderboard)
+```
+
+## 5a. The key result: CV and the hold-out disagree — and why
+
+This is the most important finding in the study, and it is a direct consequence of having
+**only one year of data**:
+
+- On **TimeSeriesSplit CV**, XGBoost is the best regressor (**CV R² ≈ 0.21**), clearly
+  beating the mean baseline (≈ 0).
+- On the **Nov–Dec hold-out**, the tree models score **near-zero or negative** R².
+
+The reason is **not** that the models are broken — it is that the hold-out months
+(November, December) are **calendar positions the model never saw in training** (Jan–Sep).
+Tree models cannot extrapolate `month`/`week_of_year` beyond their training range, so they
+fail precisely on the unseen tail; linear Ridge, which extrapolates, edges them out on that
+specific hold-out. With a single year, *any* future hold-out has this problem. We therefore
+**select the deployed model by the CV estimate** (the documented primary metric), giving
+**XGBoost** for revenue.
+
+```{python}
+#| label: depth-curve
+#| fig-cap: "Decision-tree validation curve. Train R² keeps rising while CV R² peaks early then collapses — textbook overfitting."
+import matplotlib.pyplot as plt
+dc = artifacts["regression"]["depth_curve"]
+fig, ax = plt.subplots(figsize=(8, 3.6))
+ax.plot(dc["max_depth"], dc["train_r2"], marker="o", label="train R²")
+ax.plot(dc["max_depth"], dc["cv_r2"], marker="o", label="CV R² (TimeSeriesSplit)")
+ax.axhline(0, color="grey", lw=0.8, ls="--")
+ax.set_xlabel("max_depth"); ax.set_ylabel("R²"); ax.legend(); ax.grid(alpha=0.3)
+ax.set_title("Decision tree: overfitting as depth grows")
+fig;
+```
+
+## 5b. Predicted vs. actual, and the confusion matrix
+
+```{python}
+#| label: pred-actual
+#| fig-cap: "Best regression model — predicted vs. actual daily revenue on the hold-out."
+pva = artifacts["regression"]["predicted_vs_actual"]
+fig, ax = plt.subplots(figsize=(5, 5))
+ax.scatter(pva["actual"], pva["predicted"], alpha=0.6, color="#ff4800")
+lim = [min(pva["actual"]), max(pva["actual"])]
+ax.plot(lim, lim, color="grey", ls="--")
+ax.set_xlabel("Actual ($)"); ax.set_ylabel("Predicted ($)")
+ax.set_title(f"Regression: {artifacts['regression']['best_model']} (hold-out)")
+fig;
+```
+
+```{python}
+#| label: confusion
+#| fig-cap: "Best classification model — confusion matrix on the hold-out."
+import numpy as np
+cm = np.array(artifacts["classification"]["confusion_matrix"])
+fig, ax = plt.subplots(figsize=(4.2, 4))
+ax.imshow(cm, cmap="Oranges")
+for (i, j), v in np.ndenumerate(cm):
+    ax.text(j, i, int(v), ha="center", va="center", fontsize=13)
+ax.set_xticks([0, 1], ["Pred Normal", "Pred High"])
+ax.set_yticks([0, 1], ["Actual Normal", "Actual High"])
+ax.set_title(f"Classification: {artifacts['classification']['best_model']}")
+fig;
+```
+
+# 6. Honest evaluation
+
+- **Report test performance, keep the baseline.** Every leaderboard row shows hold-out
+  metrics with the Dummy baseline retained. We do **not** quote training scores as results.
+- **Overfitting is shown, not hidden.** The depth curve makes the train-vs-CV gap explicit;
+  the deeper trees memorise the training year and generalise worse.
+- **Metric choice matters.** The majority-class classifier scores a deceptively high **F1
+  (0.60)** by predicting "high" for every day (perfect recall, no true negatives). Judged by
+  **ROC-AUC** — the threshold-independent metric — it sits at **0.50 (random)**, while
+  Logistic Regression reaches **0.74**. We therefore select and judge the classifier by AUC,
+  not F1.
+- **What we would and would not trust.** The classifier is a **useful "busy day?" signal**
+  for staffing (AUC ≈ 0.74 from the calendar alone). The revenue regressor explains only a
+  **modest share of daily variance** — daily revenue is noisy, and a single year limits how
+  far any model can generalise. We would use it for **rough planning, not financial
+  commitments**, and we would retrain as more years of data accrue.
+
+# 7. Business interpretation
+
+- **Weekends and Fridays are the demand peaks** — the weekly pattern is the strongest,
+  most reliable signal. Staff and stock to it.
+- **A simple calendar model already flags busy days** well enough to inform shift planning
+  (AUC ≈ 0.74), with no point-of-sale integration required.
+- **Revenue forecasting needs more than the calendar.** Promotions, weather, and local
+  events likely drive the unexplained variance; capturing them is the clear next step.
+- **More history is the highest-value investment.** The single-year limitation — not the
+  model choice — is what caps accuracy here.
+
+---
+
+*Reproducibility: every figure and number above is produced by executed code in this
+document, from the committed data and the seeded (`RANDOM_SEED = 42`) pipeline in `src/`.
+Run `quarto render report.qmd` from a clean checkout to regenerate.*
