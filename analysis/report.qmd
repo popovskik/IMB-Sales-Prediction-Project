@@ -280,6 +280,13 @@ fig;
   **modest share of daily variance** — daily revenue is noisy, and a single year limits how
   far any model can generalise. We would use it for **rough planning, not financial
   commitments**, and we would retrain as more years of data accrue.
+- **A feature we tried that did *not* help (reported, not hidden).** We added a leakage-safe
+  US-holiday and payday calendar (the `XGBoost (+holidays)` row above). It moved cross-validated
+  R² only from 0.212 to 0.214 — noise — and was *worse* on the hold-out. The reason is concrete:
+  this restaurant's closed days (four October Mondays, two September days) don't line up with
+  public holidays — only 25 December does — so a holiday flag has almost nothing to predict
+  here. We kept the negative result and **did not deploy it**; a calendar of *this venue's own*
+  closures would be the useful version, which again points back to needing more of its data.
 
 ## Would more data help? A learning curve
 

@@ -16,6 +16,8 @@ fit-on-train-only feature selector keep evaluation honest (R3-R5).
 
 from __future__ import annotations
 
+import datetime
+
 import numpy as np
 import pandas as pd
 from sklearn.feature_selection import RFE
@@ -64,6 +66,47 @@ def make_served_features(dates) -> pd.DataFrame:
     df["sin_month"] = np.sin(2 * np.pi * (df["month"] - 1) / 12)
     df["cos_month"] = np.cos(2 * np.pi * (df["month"] - 1) / 12)
     return df[SERVED_FEATURES]
+
+
+# --- Holiday / payday features (2.4 experiment) -----------------------------
+# Leakage-safe and computable from the date alone for ANY year, so they are
+# deployable. Dependency-free (no `holidays` package): fixed-date US holidays +
+# the major floating ones + a mid-month payday proxy.
+
+HOLIDAY_FLAG_COLS = ["is_us_holiday", "is_mid_month"]
+_FIXED_US_HOLIDAYS = {(1, 1), (7, 4), (11, 11), (12, 24), (12, 25), (12, 31)}
+
+
+def _floating_us_holidays(year: int) -> set[datetime.date]:
+    """Major floating US holidays, computed deterministically from the year."""
+    def nth_weekday(month: int, weekday: int, n: int) -> datetime.date:
+        first = datetime.date(year, month, 1)
+        offset = (weekday - first.weekday()) % 7
+        return first + datetime.timedelta(days=offset + 7 * (n - 1))
+
+    def last_weekday(month: int, weekday: int) -> datetime.date:
+        nxt = datetime.date(year + 1, 1, 1) if month == 12 else datetime.date(year, month + 1, 1)
+        last = nxt - datetime.timedelta(days=1)
+        return last - datetime.timedelta(days=(last.weekday() - weekday) % 7)
+
+    return {
+        nth_weekday(9, 0, 1),     # Labor Day — 1st Monday of September
+        last_weekday(5, 0),       # Memorial Day — last Monday of May
+        nth_weekday(11, 3, 4),    # Thanksgiving — 4th Thursday of November
+    }
+
+
+def holiday_flags(dates) -> pd.DataFrame:
+    """is_us_holiday + is_mid_month for the given date(s), indexed by date."""
+    idx = pd.DatetimeIndex(pd.to_datetime(dates))
+    is_hol = [
+        ((d.month, d.day) in _FIXED_US_HOLIDAYS) or (d.date() in _floating_us_holidays(d.year))
+        for d in idx
+    ]
+    return pd.DataFrame(
+        {"is_us_holiday": np.array(is_hol, dtype=int), "is_mid_month": (idx.day == 15).astype(int)},
+        index=idx,
+    )
 
 
 def add_lag_features(daily: pd.DataFrame) -> pd.DataFrame:

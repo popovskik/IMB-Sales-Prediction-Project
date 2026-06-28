@@ -57,11 +57,13 @@ from . import RANDOM_SEED
 from .data import build_daily
 from .features import (
     FULL_FEATURES,
+    HOLIDAY_FLAG_COLS,
     SERVED_FEATURES,
     TARGET_CLASSIFICATION,
     TARGET_REGRESSION,
     build_features,
     chronological_split,
+    holiday_flags,
     select_features,
 )
 
@@ -216,6 +218,18 @@ def train_all(write: bool = True) -> dict:
                                    "test": _reg_metrics(xgb_full, test[full_sel], yte),
                                    "train_r2": float(r2_score(ytr, xgb_full.predict(train[full_sel]))),
                                    "cv_r2": _cv_mean(xgb_full, train[full_sel], ytr, "r2")})
+
+    # +holidays comparison row (SERVED + leakage-safe US-holiday/payday flags) —
+    # report-only experiment (2.4): does a holiday calendar help calendar-only revenue?
+    train_h = train.join(holiday_flags(train.index))
+    test_h = test.join(holiday_flags(test.index))
+    hol_cols = SERVED_FEATURES + HOLIDAY_FLAG_COLS
+    hol_sel = select_features(train_h[hol_cols], ytr, "regression")
+    xgb_hol, _ = _tuned_xgb_regressor(train_h[hol_sel], ytr)
+    results["leaderboard"].append({"task": "regression", "model": "XGBoost (+holidays)",
+                                   "test": _reg_metrics(xgb_hol, test_h[hol_sel], yte),
+                                   "train_r2": float(r2_score(ytr, xgb_hol.predict(train_h[hol_sel]))),
+                                   "cv_r2": _cv_mean(xgb_hol, train_h[hol_sel], ytr, "r2")})
 
     # Select the deployable model by the PRIMARY metric (TimeSeriesSplit CV),
     # not the Nov-Dec holdout: the holdout's calendar positions are unseen in

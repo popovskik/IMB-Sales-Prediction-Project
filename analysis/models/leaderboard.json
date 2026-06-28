@@ -55,6 +55,17 @@
     "cv_r2": 0.15343126469122878
   },
   {
+    "task": "regression",
+    "model": "XGBoost (+holidays)",
+    "test": {
+      "r2": -0.17215070263425836,
+      "mae": 404.61900414638836,
+      "rmse": 664.0730117583001
+    },
+    "train_r2": 0.40270063968480974,
+    "cv_r2": 0.21370162819767313
+  },
+  {
     "task": "classification",
     "model": "Dummy (most frequent)",
     "test": {
