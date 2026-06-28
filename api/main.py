@@ -12,6 +12,7 @@ schema before predicting, so offline/online features can never drift silently.
 from __future__ import annotations
 
 import os
+from contextlib import asynccontextmanager
 from datetime import date as date_type
 from pathlib import Path
 
@@ -30,7 +31,30 @@ MODELS_DIR = Path(os.environ.get("MODELS_DIR") or (
     else HERE.parent / "analysis" / "models"
 ))
 
-app = FastAPI(title="Restaurant Demand Predictor", version="1.0")
+_models: dict = {}
+
+
+def _load_models() -> None:
+    """Load both bundles. On failure, leave _models without the regression/
+    classification keys so /health reports degraded and /predict returns 503."""
+    try:
+        _models["regression"] = joblib.load(MODELS_DIR / "daily_revenue.joblib")
+        _models["classification"] = joblib.load(MODELS_DIR / "high_demand.joblib")
+    except Exception as exc:  # noqa: BLE001 — surface load failure via /health
+        _models.clear()
+        _models["error"] = str(exc)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Load the models once when the app starts (replaces the deprecated
+    on_event('startup') hook)."""
+    _load_models()
+    yield
+    _models.clear()
+
+
+app = FastAPI(title="Restaurant Demand Predictor", version="1.0", lifespan=lifespan)
 
 _origins = os.environ.get("CORS_ORIGINS", "*").split(",")
 app.add_middleware(
@@ -39,19 +63,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-_models: dict = {}
-
-
-@app.on_event("startup")
-def _load_models() -> None:
-    """Load both bundles once. On failure, leave _models empty so /health reports it."""
-    try:
-        _models["regression"] = joblib.load(MODELS_DIR / "daily_revenue.joblib")
-        _models["classification"] = joblib.load(MODELS_DIR / "high_demand.joblib")
-    except Exception as exc:  # noqa: BLE001 — surface load failure via /health
-        _models.clear()
-        _models["error"] = str(exc)
 
 
 # --- Schemas ----------------------------------------------------------------
