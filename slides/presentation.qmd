@@ -8,7 +8,18 @@ format:
     embed-resources: true
     slide-number: true
     transition: fade
+jupyter: python3
+execute:
+  echo: false
+  warning: false
 ---
+
+```{python}
+#| include: false
+import json
+from pathlib import Path
+ART = json.loads(Path("../analysis/models/report_artifacts.json").read_text())
+```
 
 ## The problem
 
@@ -49,6 +60,25 @@ One year of 2015 pizza-sales data, ~21,000 orders aggregated to 365 days.
 - **Weekends and Fridays** are reliably the busiest, highest-earning days.
 - A mild seasonal lift in **summer and year-end**.
 - This is the **most dependable signal** in the data.
+
+## What drives demand?
+
+```{python}
+import matplotlib.pyplot as plt
+
+def _imp(ax, ranked, title, color):
+    top = ranked[:6][::-1]
+    ax.barh([d["feature"] for d in top], [d["importance"] for d in top], color=color)
+    ax.set_title(title, fontsize=12); ax.tick_params(labelsize=9)
+
+fig, axes = plt.subplots(1, 2, figsize=(9.5, 3.0))
+_imp(axes[0], ART["regression"]["permutation_importance"], "Revenue", "#ff4800")
+_imp(axes[1], ART["classification"]["permutation_importance"], "Busy day", "#2360c4")
+fig.tight_layout()
+fig
+```
+
+**The weekly rhythm dominates** — day-of-week and the weekend flag are the top drivers for *both* questions (permutation importance + the correlation study agree).
 
 ## Finding 2 — busy days *can* be predicted
 
