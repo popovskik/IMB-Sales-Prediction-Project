@@ -1,5 +1,7 @@
 # Restaurant Demand Analytics
 
+[![tests](https://github.com/popovskik/IMB-Sales-Prediction-Project/actions/workflows/ci.yml/badge.svg)](https://github.com/popovskik/IMB-Sales-Prediction-Project/actions/workflows/ci.yml)
+
 Predicting a pizza restaurant's **daily revenue** (regression) and flagging **high-demand days** (classification) from a full year of order data — an end-to-end machine learning study with a live, deployed prediction app.
 
 > IMB MADA 2026 capstone. Dataset: [Maven Analytics Pizza Place Sales](https://mavenanalytics.io/data-playground/pizza-place-sales) (public, no personal data).

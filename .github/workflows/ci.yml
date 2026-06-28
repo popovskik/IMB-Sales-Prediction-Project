@@ -1,0 +1,36 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# The test suites read the committed artifacts (models/leaderboard.json, *.joblib) and
+# exercise the pipeline wiring + leakage guards. The slow XGBoost hyper-parameter search
+# only runs in rebuild.py / `python -m src.models`, never in pytest — so CI stays cheap.
+jobs:
+  analysis:
+    name: analysis pipeline (data / features / models + leakage guards)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r analysis/requirements.txt
+      - run: pytest -q
+        working-directory: analysis
+
+  api:
+    name: prediction API (contract + offline/online feature parity)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r api/requirements.txt
+      - run: pytest -q
+        working-directory: api
