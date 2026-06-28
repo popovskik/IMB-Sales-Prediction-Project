@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { fallbackFromBaked, predict } from "../api";
 import type { DailyRecord, PredictResponse } from "../types";
 import { InfoTip } from "./InfoTip";
@@ -10,13 +10,19 @@ export function Predictor({ daily }: { daily: DailyRecord[] }) {
   const [status, setStatus] = useState<Status>("idle");
   const [result, setResult] = useState<PredictResponse | null>(null);
   const [note, setNote] = useState<string>("");
+  const [slow, setSlow] = useState(false);          // true once the request has been pending >3s
+  const slowTimer = useRef<number | null>(null);
 
   const valid = /^\d{4}-\d{2}-\d{2}$/.test(date);
 
   async function run() {
     if (!valid) return;
     setStatus("loading");
+    setSlow(false);
     setNote("");
+    // Only escalate to the "waking the server" message if the call is genuinely slow,
+    // so fast responses don't flash a scary cold-start warning.
+    slowTimer.current = window.setTimeout(() => setSlow(true), 3000);
     try {
       const r = await predict(date);
       setResult(r);
@@ -33,6 +39,9 @@ export function Predictor({ daily }: { daily: DailyRecord[] }) {
         setStatus("fallback");
         setNote("Live predictor is unavailable and no pre-computed value exists for that date. Try a 2015 date.");
       }
+    } finally {
+      if (slowTimer.current) { clearTimeout(slowTimer.current); slowTimer.current = null; }
+      setSlow(false);
     }
   }
 
@@ -58,7 +67,9 @@ export function Predictor({ daily }: { daily: DailyRecord[] }) {
 
       {status === "loading" && (
         <p style={{ color: "var(--ink-2)", marginTop: 14 }}>
-          Waking the model — a free-tier server can take up to ~25s on the first request…
+          {slow
+            ? "Waking the prediction server — the first request can take up to ~30s on a free-tier host. Hang tight…"
+            : "Forecasting…"}
         </p>
       )}
 
