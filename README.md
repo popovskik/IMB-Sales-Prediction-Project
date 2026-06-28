@@ -52,14 +52,37 @@ slides/     reveal.js presentation (D4)
 docs/       executive summary (D5), AI-workflow reflection (D3)
 ```
 
-## Run the analysis locally
+## Run it yourself (from a clean clone)
+
+Everything is seeded (`RANDOM_SEED = 42`) and reproduces from a clean checkout. Commands
+assume the repo root; the venv path uses Windows syntax (`source .venv/bin/activate` on macOS/Linux).
 
 ```bash
+# (a) install the analysis environment
 cd analysis
-python -m venv .venv
-.venv/Scripts/activate        # Windows; use source .venv/bin/activate on macOS/Linux
+python -m venv .venv && .venv/Scripts/activate
 pip install -r requirements.txt
-quarto render report.qmd      # produces report.html
+
+# (b) run the tests (data-integrity + leakage guards + model checks)
+pytest                       # 42 tests
+
+# (c) rebuild every artifact in one command (data -> train -> predictions.json,
+#     and sync the models into api/ for deploy). Add --report to also render the report.
+python rebuild.py            # or: python rebuild.py --report
+
+# (d) render just the analysis report (D1)
+quarto render report.qmd     # produces report.html
+
+# (e) run the prediction API locally  (new terminal, from repo root)
+cd api && pip install -r requirements.txt
+uvicorn main:app --reload    # http://localhost:8000  (/docs, /health)
+
+# (f) run the dashboard locally  (new terminal)
+cd app && npm install
+echo "VITE_API_URL=http://localhost:8000" > .env.local   # point the predictor at your local API
+npm run dev                  # http://localhost:5173
 ```
 
-Everything is seeded (`RANDOM_SEED = 42`) and runs end-to-end from a clean checkout.
+> The full ML pipeline lives in `analysis/src/` (`data` → `eda` → `features` → `models`) and is
+> exercised by the test suite; `rebuild.py` is the single entry point that regenerates the
+> trained models, the leaderboard, and the dashboard's `predictions.json` deterministically.
