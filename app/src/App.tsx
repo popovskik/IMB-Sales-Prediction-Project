@@ -3,6 +3,7 @@ import { loadPredictions } from "./api";
 import type { Predictions } from "./types";
 import { Layout } from "./components/Layout";
 import { Predictor } from "./components/Predictor";
+import { About } from "./components/About";
 import { EdaCharts } from "./components/EdaCharts";
 import { Scorecard } from "./components/Scorecard";
 
@@ -37,6 +38,7 @@ export default function App() {
     <Layout summary={data.charts.summary}>
       {/* Predictor first — the one interactive tool for the owner persona. */}
       <Predictor daily={data.daily} />
+      <About />
       <EdaCharts charts={data.charts} />
       <Scorecard leaderboard={data.leaderboard} models={data.models} />
     </Layout>

@@ -9,6 +9,7 @@ export function Layout({ children, summary }: { children: ReactNode; summary?: C
     <div style={{ display: "flex", minHeight: "100vh" }}>
       {/* Dark sidebar — Around dashboard shell */}
       <aside
+        className="app-sidebar"
         style={{
           width: "var(--sidebar-w)", background: "var(--sidebar)", color: "#fff",
           padding: "24px 20px", flexShrink: 0,

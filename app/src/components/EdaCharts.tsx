@@ -20,6 +20,7 @@ export function EdaCharts({ charts }: { charts: Charts }) {
 
       <div className="eda-grid">
         <Panel title="Mean daily revenue by month"
+               caption="How an average day's takings shift month to month."
                tip={<>The average day's revenue in each month. Use it to spot <strong>seasonal trends</strong> — busier or quieter times of year.</>}>
           {charts.revenue_by_month?.length ? (
             <ResponsiveContainer width="100%" height={220}>
@@ -35,6 +36,7 @@ export function EdaCharts({ charts }: { charts: Charts }) {
         </Panel>
 
         <Panel title="Mean daily revenue by day of week"
+               caption="Weekends and Fridays bring in the most."
                tip={<>The average revenue for each weekday across the year. The clearest pattern in the data — <strong>weekends and Fridays earn the most.</strong></>}>
           {charts.revenue_by_dow?.length ? (
             <ResponsiveContainer width="100%" height={220}>
@@ -50,6 +52,7 @@ export function EdaCharts({ charts }: { charts: Charts }) {
         </Panel>
 
         <Panel title="Distribution of daily revenue"
+               caption="Most days cluster around the typical figure; the rare closed days sit at zero."
                tip={<>How many days fell into each revenue range. A tall middle means most days are typical; the bars far left are the rare <strong>closed days</strong>.</>}>
           {charts.revenue_histogram?.length ? (
             <ResponsiveContainer width="100%" height={220}>
@@ -65,6 +68,7 @@ export function EdaCharts({ charts }: { charts: Charts }) {
         </Panel>
 
         <Panel title="Revenue heatmap — day of week × month"
+               caption="Darker = a higher-earning weekday-and-month combination."
                tip={<>Each cell is the average revenue for that weekday in that month. <strong>Darker = higher revenue.</strong> Read across a row to see a weekday over the year, or down a column to compare weekdays within a month.</>}>
           {charts.heatmap?.values?.length ? <Heatmap heat={charts.heatmap} /> : <Empty label="heatmap" />}
         </Panel>
@@ -73,7 +77,7 @@ export function EdaCharts({ charts }: { charts: Charts }) {
   );
 }
 
-function Panel({ title, tip, children }: { title: string; tip: ReactNode; children: ReactNode }) {
+function Panel({ title, tip, caption, children }: { title: string; tip: ReactNode; caption: string; children: ReactNode }) {
   return (
     <div>
       <div style={{ fontWeight: 600, fontSize: 13, color: "var(--ink-2)", marginBottom: 8, display: "flex", alignItems: "center" }}>
@@ -81,6 +85,7 @@ function Panel({ title, tip, children }: { title: string; tip: ReactNode; childr
         <InfoTip placement="bottom">{tip}</InfoTip>
       </div>
       {children}
+      <p style={{ fontSize: 12, color: "var(--ink-3)", margin: "6px 0 0" }}>{caption}</p>
     </div>
   );
 }

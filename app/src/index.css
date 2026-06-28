@@ -78,6 +78,11 @@ tr.best td { background: var(--orange-soft); font-weight: 600; }
 /* ---- Responsive layout grids ---- */
 .content { width: 100%; max-width: var(--content-max); margin: 0; }
 
+/* On phones the fixed 252px sidebar would crush the content — hide it. */
+@media (max-width: 720px) {
+  .app-sidebar { display: none; }
+}
+
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
