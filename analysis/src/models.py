@@ -40,10 +40,12 @@ from sklearn.metrics import (
     root_mean_squared_error,
 )
 from sklearn.base import clone
+from sklearn.inspection import permutation_importance
 from sklearn.model_selection import (
     RandomizedSearchCV,
     TimeSeriesSplit,
     cross_val_score,
+    learning_curve,
     validation_curve,
 )
 from sklearn.pipeline import Pipeline
@@ -161,6 +163,17 @@ def _clf_metrics(model, X, y) -> dict:
     return out
 
 
+# --- Report-only diagnostics (do NOT affect model selection or served models) ---
+
+def _perm_importance(model, X, y, scoring: str, features: list[str]) -> list[dict]:
+    """Seeded permutation importance on the test set, ranked high-to-low.
+    Report-only evidence for 'which features matter' — never feeds selection."""
+    pi = permutation_importance(model, X, y, n_repeats=20, random_state=RANDOM_SEED, scoring=scoring)
+    ranked = [{"feature": f, "importance": float(m), "std": float(s)}
+              for f, m, s in zip(features, pi.importances_mean, pi.importances_std)]
+    return sorted(ranked, key=lambda d: d["importance"], reverse=True)
+
+
 # --- Orchestration ----------------------------------------------------------
 
 def train_all(write: bool = True) -> dict:
@@ -230,6 +243,21 @@ def train_all(write: bool = True) -> dict:
         "cv_r2": [float(s) for s in te_sc.mean(axis=1)],
     }
 
+    # 2.2 — permutation importance for the best regressor (report-only).
+    results["regression"]["permutation_importance"] = _perm_importance(
+        reg_fitted[best_reg], Xte, yte, "r2", reg_selected)
+
+    # 2.3 — learning curve for tuned XGBoost: does CV score keep rising with more
+    # data? Visual evidence for the "invest in more data" recommendation.
+    ls_sizes, ls_tr, ls_cv = learning_curve(
+        clone(xgb_reg), Xtr, ytr, train_sizes=np.linspace(0.25, 1.0, 6),
+        cv=CV, scoring="r2")
+    results["regression"]["learning_curve"] = {
+        "train_sizes": [int(s) for s in ls_sizes],
+        "train_r2": [float(s) for s in ls_tr.mean(axis=1)],
+        "cv_r2": [float(s) for s in ls_cv.mean(axis=1)],
+    }
+
     # ---- Classification ladder (served features) ----
     Xtr_c, ytr_c = train[clf_selected], train[TARGET_CLASSIFICATION]
     Xte_c, yte_c = test[clf_selected], test[TARGET_CLASSIFICATION]
@@ -258,6 +286,10 @@ def train_all(write: bool = True) -> dict:
     cm = confusion_matrix(yte_c, clf_fitted[best_clf].predict(Xte_c))
     results["classification"]["confusion_matrix"] = cm.tolist()
     results["classification"]["xgb_best_params"] = {k: v for k, v in xgb_clf_params.items()}
+
+    # 2.2 — permutation importance for the best classifier (ROC-AUC scoring, report-only).
+    results["classification"]["permutation_importance"] = _perm_importance(
+        clf_fitted[best_clf], Xte_c, yte_c, "roc_auc", clf_selected)
 
     # ---- Serialize the served (deployable) models + feature schema ----
     if write:

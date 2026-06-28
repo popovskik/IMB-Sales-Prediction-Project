@@ -233,6 +233,84 @@
         -0.005109918360963172,
         -0.003973647230147925
       ]
+    },
+    "permutation_importance": [
+      {
+        "feature": "day_of_week",
+        "importance": 0.12382256402083454,
+        "std": 0.03509840235778552
+      },
+      {
+        "feature": "is_month_end",
+        "importance": 0.0011318139107590053,
+        "std": 0.002454111273309679
+      },
+      {
+        "feature": "month",
+        "importance": 0.0,
+        "std": 0.0
+      },
+      {
+        "feature": "quarter",
+        "importance": 0.0,
+        "std": 0.0
+      },
+      {
+        "feature": "is_weekend",
+        "importance": 0.0,
+        "std": 0.0
+      },
+      {
+        "feature": "sin_month",
+        "importance": 0.0,
+        "std": 0.0
+      },
+      {
+        "feature": "cos_month",
+        "importance": 0.0,
+        "std": 0.0
+      },
+      {
+        "feature": "is_month_start",
+        "importance": -0.003125279022383809,
+        "std": 0.007003151254039027
+      },
+      {
+        "feature": "sin_dow",
+        "importance": -0.00815021444576639,
+        "std": 0.002959770778569163
+      },
+      {
+        "feature": "cos_dow",
+        "importance": -0.0763084253137624,
+        "std": 0.026254759436761126
+      }
+    ],
+    "learning_curve": {
+      "train_sizes": [
+        12,
+        19,
+        26,
+        33,
+        40,
+        48
+      ],
+      "train_r2": [
+        0.7671687191866967,
+        0.4624267687166935,
+        0.5254400495430775,
+        0.5336666153328304,
+        0.5318142025983228,
+        0.5059804400549801
+      ],
+      "cv_r2": [
+        0.03868771475898958,
+        0.20070628061072276,
+        0.1937883827325028,
+        0.16036733350971294,
+        0.12899532721919557,
+        0.15542454770474237
+      ]
     }
   },
   "classification": {
@@ -253,7 +331,49 @@
       "model__max_depth": 2,
       "model__learning_rate": 0.1,
       "model__colsample_bytree": 0.7
-    }
+    },
+    "permutation_importance": [
+      {
+        "feature": "cos_dow",
+        "importance": 0.21920329670329658,
+        "std": 0.06726012560078842
+      },
+      {
+        "feature": "day_of_week",
+        "importance": 0.06362637362637354,
+        "std": 0.052897450989790096
+      },
+      {
+        "feature": "sin_dow",
+        "importance": 0.061978021978021915,
+        "std": 0.03663834154937899
+      },
+      {
+        "feature": "is_weekend",
+        "importance": 0.009862637362637284,
+        "std": 0.020597049972663067
+      },
+      {
+        "feature": "is_month_start",
+        "importance": 0.006758241758241706,
+        "std": 0.02333328301729469
+      },
+      {
+        "feature": "sin_month",
+        "importance": -0.0237362637362638,
+        "std": 0.01391488262469802
+      },
+      {
+        "feature": "month",
+        "importance": -0.029890109890109966,
+        "std": 0.014250167101052574
+      },
+      {
+        "feature": "cos_month",
+        "importance": -0.029890109890109966,
+        "std": 0.014250167101052574
+      }
+    ]
   },
   "selected_features": {
     "regression": [

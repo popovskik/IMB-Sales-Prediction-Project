@@ -90,6 +90,16 @@ def revenue_histogram(daily: pd.DataFrame, bins: int = 30) -> pd.DataFrame:
     })
 
 
+def correlation_matrix(features_df: pd.DataFrame) -> pd.DataFrame:
+    """Pearson correlation over the modelling features and both targets.
+
+    Pass the full feature frame (src.features.build_features output). Used for the
+    correlation study (report section 3) — it shows which calendar features track
+    revenue/demand, and why the sin/cos encodings are by-design collinear with their
+    raw counterparts (which is what the select_features correlation filter handles)."""
+    return features_df.corr(numeric_only=True)
+
+
 def summary_stats(daily: pd.DataFrame) -> dict:
     """Headline numbers for the report's overview and exec summary."""
     return {
@@ -168,5 +178,19 @@ def fig_revenue_distribution(daily: pd.DataFrame):
     ax.set_title("Distribution of daily revenue")
     ax.set_xlabel("Daily revenue ($)")
     ax.set_ylabel("Days")
+    fig.tight_layout()
+    return fig
+
+
+def fig_correlation_heatmap(features_df: pd.DataFrame):
+    """Correlation heatmap of modelling features and both targets."""
+    corr = correlation_matrix(features_df)
+    labels = list(corr.columns)
+    fig, ax = plt.subplots(figsize=(9, 8))
+    im = ax.imshow(corr.values, cmap="coolwarm", vmin=-1, vmax=1, aspect="auto")
+    ax.set_xticks(range(len(labels)), labels, rotation=90, fontsize=7)
+    ax.set_yticks(range(len(labels)), labels, fontsize=7)
+    fig.colorbar(im, ax=ax, label="Pearson r", shrink=0.8)
+    ax.set_title("Correlation — features and targets")
     fig.tight_layout()
     return fig

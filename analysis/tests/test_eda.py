@@ -6,15 +6,19 @@ import json
 
 import pytest
 
+import numpy as np
+
 from src.data import build_daily
 from src.eda import (
     chart_data,
+    correlation_matrix,
     dow_month_heatmap,
     revenue_by_dow,
     revenue_by_month,
     summary_stats,
     weekend_contrast,
 )
+from src.features import build_features
 
 
 @pytest.fixture(scope="module")
@@ -55,6 +59,18 @@ def test_summary_stats_reports_closed_days(daily):
     assert s["n_days"] == 365
     assert s["closed_days"] >= 1  # 2015 had closed (zero-order) days
     assert 0 < s["high_demand_share"] < 1
+
+
+def test_correlation_matrix_square_and_symmetric(daily):
+    cm = correlation_matrix(build_features(daily))
+    # square
+    assert cm.shape[0] == cm.shape[1]
+    assert cm.shape[0] > 0
+    # symmetric (a correlation matrix equals its transpose)
+    assert np.allclose(cm.values, cm.values.T, equal_nan=True)
+    # both targets are included in the study
+    assert "daily_revenue" in cm.columns
+    assert "high_demand_day" in cm.columns
 
 
 def test_chart_data_is_json_serializable(daily):

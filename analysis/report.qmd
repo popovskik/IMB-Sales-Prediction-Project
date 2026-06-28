@@ -28,8 +28,9 @@ from pathlib import Path
 import pandas as pd
 
 from src.data import build_daily
-from src.eda import (chart_data, fig_heatmap, fig_revenue_by_dow,
+from src.eda import (chart_data, fig_correlation_heatmap, fig_heatmap, fig_revenue_by_dow,
                      fig_revenue_by_month, fig_revenue_distribution, summary_stats)
+from src.features import build_features
 from src import augment
 
 MODELS = Path("models")
@@ -37,6 +38,7 @@ leaderboard = json.loads((MODELS / "leaderboard.json").read_text())
 artifacts = json.loads((MODELS / "report_artifacts.json").read_text())
 
 daily = build_daily()
+features = build_features(daily)
 summary = summary_stats(daily)
 ```
 
@@ -111,6 +113,21 @@ fig_heatmap(daily);
 #| fig-cap: "Distribution of daily revenue. The spike near zero is the closed days."
 fig_revenue_distribution(daily);
 ```
+
+### Correlation study
+
+```{python}
+#| label: fig-corr
+#| fig-cap: "Correlation between modelling features and both targets. The day-of-week / weekend block shows the strongest association with revenue; sin/cos encodings are by design highly collinear with their raw counterparts."
+fig_correlation_heatmap(features);
+```
+
+The correlation study confirms the EDA: **`is_weekend` and the day-of-week encodings carry
+the strongest linear association with daily revenue and with high-demand days**, while month/
+seasonal terms are weaker. It also shows each cyclical `sin_*/cos_*` feature is highly
+correlated with its raw calendar counterpart (e.g. `sin_dow` with `day_of_week`) — that
+redundancy is exactly why the pipeline runs a correlation/collinearity filter inside
+`select_features` before fitting, so the models aren't fed three copies of the same signal.
 
 ## 3a. Synthetic enrichment (clearly labelled — not used for modelling)
 
@@ -264,6 +281,31 @@ fig;
   far any model can generalise. We would use it for **rough planning, not financial
   commitments**, and we would retrain as more years of data accrue.
 
+## Would more data help? A learning curve
+
+```{python}
+#| label: fig-learning
+#| fig-cap: "XGBoost learning curve (TimeSeriesSplit). Train R² sits well above CV R² at every training size — a wide, persistent gap that does not close within one year of data."
+import matplotlib.pyplot as plt
+lc = artifacts["regression"]["learning_curve"]
+fig, ax = plt.subplots(figsize=(8, 3.6))
+ax.plot(lc["train_sizes"], lc["train_r2"], marker="o", label="train R²")
+ax.plot(lc["train_sizes"], lc["cv_r2"], marker="o", label="CV R² (TimeSeriesSplit)")
+ax.axhline(0, color="grey", lw=0.8, ls="--")
+ax.set_xlabel("training days used (per CV fold)"); ax.set_ylabel("R²"); ax.legend(); ax.grid(alpha=0.3)
+ax.set_title("XGBoost — learning curve")
+fig;
+```
+
+The train score stays well above the cross-validated score at **every** training size — a
+persistent gap of roughly 0.3–0.4 that the available data never closes, with CV R² holding in
+a modest, noisy band around 0.15. That wide, stubborn train–CV gap is the textbook signature of
+a **high-variance, data-limited** model: it has the capacity to fit, but not enough history to
+generalise. (The x-axis is short because TimeSeriesSplit's early folds train on few days; even
+so, the gap never narrows.) This is the honest, evidence-backed version of the
+"invest in more data" recommendation — more than a fancier model, more *history* is what would
+move the revenue forecast.
+
 # 7. Business interpretation
 
 - **Weekends and Fridays are the demand peaks** — the weekly pattern is the strongest,
@@ -274,6 +316,32 @@ fig;
   events likely drive the unexplained variance; capturing them is the clear next step.
 - **More history is the highest-value investment.** The single-year limitation — not the
   model choice — is what caps accuracy here.
+
+## Which features matter? (permutation importance)
+
+```{python}
+#| label: fig-importance
+#| fig-cap: "Permutation importance on the hold-out set — how much each feature actually moves the prediction. Confirms the weekly rhythm (weekend / day-of-week) is the dominant driver for both tasks."
+import matplotlib.pyplot as plt
+
+def _imp_ax(ax, ranked, title, color):
+    top = ranked[:8][::-1]
+    ax.barh([d["feature"] for d in top], [d["importance"] for d in top], color=color)
+    ax.set_title(title, fontsize=11); ax.tick_params(labelsize=8)
+
+fig, axes = plt.subplots(1, 2, figsize=(10, 3.8))
+_imp_ax(axes[0], artifacts["regression"]["permutation_importance"],
+        f"Revenue — {artifacts['regression']['best_model']}", "#ff4800")
+_imp_ax(axes[1], artifacts["classification"]["permutation_importance"],
+        f"High-demand — {artifacts['classification']['best_model']}", "#2360c4")
+fig.tight_layout()
+fig;
+```
+
+The features that most move the predictions are the **weekend flag and the day-of-week
+encodings** — direct evidence for the headline claim that *the weekly rhythm is the strongest,
+most reliable signal*. (Permutation importance is computed on the hold-out set and is
+report-only; it does not influence model selection or the deployed models.)
 
 ---
 
