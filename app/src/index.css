@@ -4,12 +4,15 @@
 
 html, body, #root { margin: 0; height: 100%; }
 
+html { overflow-x: hidden; }
+
 body {
   background: var(--canvas);
   color: var(--ink);
   font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
   font-size: 14px;
   line-height: 1.5;
+  overflow-x: hidden;
 }
 
 h1, h2, h3 {
@@ -126,3 +129,13 @@ tr.best td { background: var(--orange-soft); font-weight: 600; }
 /* keep edge bubbles from clipping off-screen */
 .infotip--end .infotip-bubble { left: auto; right: 0; transform: none; }
 .infotip--end .infotip-bubble::after { left: auto; right: 8px; transform: none; }
+
+/* ---- Model diagnostics 3-up grid — collapses to 1 col on mobile ---- */
+.diagnostics-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 720px) {
+  .diagnostics-panels { grid-template-columns: 1fr; }
+}

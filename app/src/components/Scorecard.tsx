@@ -31,7 +31,10 @@ export function Scorecard({ leaderboard, models, diagnostics }: {
   const clf = leaderboard.filter((r) => r.task === "classification");
 
   // Deployed (best) models: regression by CV R², classification by ROC-AUC.
-  const bestReg = reg.filter((r) => r.model !== "XGBoost (+lags)")
+  // Exclude all report-only comparison rows — only the core ladder is deployable.
+  const REPORT_ONLY = new Set(["XGBoost (+lags)", "XGBoost (+holidays)", "SARIMA"]);
+  const bestReg = reg
+    .filter((r) => !REPORT_ONLY.has(r.model))
     .reduce((a, b) => ((b.cv_r2 ?? -9) > (a.cv_r2 ?? -9) ? b : a), reg[0]);
   const bestClf = clf.reduce((a, b) => ((b.test.roc_auc ?? 0) > (a.test.roc_auc ?? 0) ? b : a), clf[0]);
 
@@ -133,7 +136,7 @@ function DiagnosticsRow({ diagnostics }: { diagnostics: ModelDiagnostics }) {
   return (
     <div style={{ marginTop: 24 }}>
       <h3 style={{ fontSize: 14, margin: "0 0 12px" }}>Model visualisations</h3>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+      <div className="diagnostics-panels">
 
         {/* Nov-Dec forecast comparison: Actual vs XGBoost vs SARIMA */}
         <div>
