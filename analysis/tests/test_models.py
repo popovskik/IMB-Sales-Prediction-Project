@@ -82,7 +82,9 @@ def test_best_model_beats_baseline_regression(leaderboard):
     rows = {r["model"]: r for r in _rows(leaderboard, "regression")}
     dummy = rows.pop("Dummy (mean)")
     # At least one non-baseline model beats the mean baseline on the CV estimate.
-    assert max(r["cv_r2"] for r in rows.values()) > dummy["cv_r2"]
+    # SARIMA rows have cv_r2=null (no TimeSeriesSplit CV analogue); filter them out.
+    cv_scores = [r["cv_r2"] for r in rows.values() if r["cv_r2"] is not None]
+    assert max(cv_scores) > dummy["cv_r2"]
     # And on the held-out test set.
     assert max(r["test"]["r2"] for r in rows.values()) > dummy["test"]["r2"]
 

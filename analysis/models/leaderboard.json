@@ -66,6 +66,18 @@
     "cv_r2": 0.21370162819767313
   },
   {
+    "task": "regression",
+    "model": "SARIMA",
+    "test": {
+      "r2": -0.004743229832086637,
+      "mae": 385.7328722889938,
+      "rmse": 614.8251845306846
+    },
+    "train_r2": null,
+    "cv_r2": null,
+    "report_only": true
+  },
+  {
     "task": "classification",
     "model": "Dummy (most frequent)",
     "test": {

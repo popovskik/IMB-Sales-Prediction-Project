@@ -95,6 +95,53 @@ def _pipe(model, scale: bool = False) -> Pipeline:
 
 # --- Regression -------------------------------------------------------------
 
+def _sarima_regression_row(train: "pd.DataFrame", test: "pd.DataFrame",
+                           y_test: "np.ndarray") -> dict:
+    """SARIMA(p,d,q)(P,D,Q)[7] on raw daily revenue — report-only.
+
+    Fits on the training series (Jan–Sep) and forecasts forward to Dec 31.
+    Evaluates on the Nov–Dec holdout only (same slice as every other model).
+    Cannot be deployed: requires the observed series at inference time.
+    """
+    try:
+        from pmdarima import auto_arima
+    except ImportError as exc:
+        raise ImportError("pmdarima is required: pip install 'pmdarima>=2.0.0'") from exc
+
+    y_train = train.sort_index()[TARGET_REGRESSION].values
+
+    # Periods from end of train (Sep 30) to end of test (Dec 31) = 92 days.
+    n_forecast = (test.index[-1] - train.index[-1]).days
+    n_test = len(test)
+
+    model = auto_arima(
+        y_train,
+        seasonal=True,
+        m=7,
+        stepwise=True,
+        suppress_warnings=True,
+        error_action="ignore",
+        information_criterion="aic",
+    )
+
+    # Forecast the full gap; take only the last n_test values (Nov-Dec).
+    forecast_all = model.predict(n_periods=n_forecast)
+    y_pred = forecast_all[-n_test:]
+
+    return {
+        "task": "regression",
+        "model": "SARIMA",
+        "test": {
+            "r2": float(r2_score(y_test, y_pred)),
+            "mae": float(mean_absolute_error(y_test, y_pred)),
+            "rmse": float(root_mean_squared_error(y_test, y_pred)),
+        },
+        "train_r2": None,
+        "cv_r2": None,
+        "report_only": True,
+    }
+
+
 def _regression_ladder():
     return {
         "Dummy (mean)": _pipe(DummyRegressor(strategy="mean")),
@@ -231,6 +278,13 @@ def train_all(write: bool = True) -> dict:
                                    "train_r2": float(r2_score(ytr, xgb_hol.predict(train_h[hol_sel]))),
                                    "cv_r2": _cv_mean(xgb_hol, train_h[hol_sel], ytr, "r2")})
 
+    # SARIMA comparison row (professor suggestion) — report-only, not deployed.
+    # Fits on train (Jan-Sep) and forecasts forward 92 days to Dec 31; the last 61
+    # (Nov-Dec) are evaluated against the same holdout as every other model.
+    # cv_r2 and train_r2 are null: TimeSeriesSplit CV has no natural analogue for a
+    # univariate ARIMA forecast.
+    results["leaderboard"].append(_sarima_regression_row(train, test, yte))
+
     # Select the deployable model by the PRIMARY metric (TimeSeriesSplit CV),
     # not the Nov-Dec holdout: the holdout's calendar positions are unseen in
     # training, so it under-rates models that need to interpolate seasonality.
@@ -329,10 +383,12 @@ def train_all(write: bool = True) -> dict:
 def _print_leaderboard(results: dict) -> None:
     rows = results["leaderboard"]
     print("\n=== REGRESSION  (CV = TimeSeriesSplit mean; test = Nov-Dec holdout) ===")
-    print(f"{'model':<20}{'cv R2':>8}{'test R2':>9}{'MAE':>9}{'RMSE':>9}{'train R2':>10}")
+    print(f"{'model':<24}{'cv R2':>8}{'test R2':>9}{'MAE':>9}{'RMSE':>9}{'train R2':>10}")
     for r in [r for r in rows if r["task"] == "regression"]:
         m = r["test"]
-        print(f"{r['model']:<20}{r['cv_r2']:>8.3f}{m['r2']:>9.3f}{m['mae']:>9.1f}{m['rmse']:>9.1f}{r['train_r2']:>10.3f}")
+        cv = f"{r['cv_r2']:>8.3f}" if r["cv_r2"] is not None else "     n/a"
+        tr = f"{r['train_r2']:>10.3f}" if r["train_r2"] is not None else "       n/a"
+        print(f"{r['model']:<24}{cv}{m['r2']:>9.3f}{m['mae']:>9.1f}{m['rmse']:>9.1f}{tr}")
     print("\n=== CLASSIFICATION  (CV F1 = TimeSeriesSplit mean; test = Nov-Dec holdout) ===")
     print(f"{'model':<24}{'cv F1':>7}{'acc':>7}{'prec':>7}{'rec':>7}{'F1':>7}{'AUC':>7}")
     for r in [r for r in rows if r["task"] == "classification"]:
