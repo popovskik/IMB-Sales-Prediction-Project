@@ -40,7 +40,7 @@ export default function App() {
       <Predictor daily={data.daily} />
       <About />
       <EdaCharts charts={data.charts} />
-      <Scorecard leaderboard={data.leaderboard} models={data.models} />
+      <Scorecard leaderboard={data.leaderboard} models={data.models} diagnostics={data.model_diagnostics} />
     </Layout>
   );
 }

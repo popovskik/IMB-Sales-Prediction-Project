@@ -37,6 +37,7 @@ from sklearn.metrics import (
     r2_score,
     recall_score,
     roc_auc_score,
+    roc_curve,
     root_mean_squared_error,
 )
 from sklearn.base import clone
@@ -383,6 +384,16 @@ def train_all(write: bool = True) -> dict:
     cm = confusion_matrix(yte_c, clf_fitted[best_clf].predict(Xte_c))
     results["classification"]["confusion_matrix"] = cm.tolist()
     results["classification"]["xgb_best_params"] = {k: v for k, v in xgb_clf_params.items()}
+
+    # ROC curve for the dashboard visualization (best classifier on the test set).
+    if hasattr(clf_fitted[best_clf], "predict_proba"):
+        proba_best = clf_fitted[best_clf].predict_proba(Xte_c)[:, 1]
+        fpr_arr, tpr_arr, _ = roc_curve(yte_c, proba_best)
+        results["classification"]["roc_curve"] = {
+            "fpr": [round(float(v), 4) for v in fpr_arr],
+            "tpr": [round(float(v), 4) for v in tpr_arr],
+        }
+        results["classification"]["roc_auc"] = float(roc_auc_score(yte_c, proba_best))
 
     # 2.2 — permutation importance for the best classifier (ROC-AUC scoring, report-only).
     results["classification"]["permutation_importance"] = _perm_importance(

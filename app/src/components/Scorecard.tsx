@@ -1,5 +1,9 @@
 import type { ReactNode } from "react";
-import type { LeaderboardRow, Predictions } from "../types";
+import {
+  CartesianGrid, Line, LineChart, ResponsiveContainer,
+  Scatter, ScatterChart, Tooltip, XAxis, YAxis,
+} from "recharts";
+import type { LeaderboardRow, ModelDiagnostics, Predictions } from "../types";
 import { InfoTip } from "./InfoTip";
 
 const n = (v: number | null | undefined, d = 3) => (v == null ? "—" : v.toFixed(d));
@@ -18,7 +22,11 @@ function Th({ children, tip, align = "center" }: { children: ReactNode; tip: Rea
   );
 }
 
-export function Scorecard({ leaderboard, models }: { leaderboard: LeaderboardRow[]; models: Predictions["models"] }) {
+export function Scorecard({ leaderboard, models, diagnostics }: {
+  leaderboard: LeaderboardRow[];
+  models: Predictions["models"];
+  diagnostics?: ModelDiagnostics;
+}) {
   const reg = leaderboard.filter((r) => r.task === "regression");
   const clf = leaderboard.filter((r) => r.task === "classification");
 
@@ -86,10 +94,168 @@ export function Scorecard({ leaderboard, models }: { leaderboard: LeaderboardRow
         </table>
       </div>
 
+      {diagnostics && (
+        <DiagnosticsRow diagnostics={diagnostics} />
+      )}
+
       <p style={{ color: "var(--ink-3)", fontSize: 12, marginTop: 14, marginBottom: 0 }}>
         Trained with scikit-learn {models.sklearn_version ?? "?"}. Features:{" "}
         {models.regression.join(", ")}.
       </p>
     </section>
+  );
+}
+
+const ORANGE = "#ff4800";
+const BLUE = "#2360c4";
+
+function DiagnosticsRow({ diagnostics }: { diagnostics: ModelDiagnostics }) {
+  const { regression, classification } = diagnostics;
+
+  // Build scatter data for predicted vs actual
+  const pva = regression.predicted_vs_actual;
+  const pvaData = pva
+    ? pva.actual.map((a, i) => ({ actual: Math.round(a), predicted: Math.round(pva.predicted[i]) }))
+    : null;
+
+  // Build ROC curve points
+  const roc = classification.roc_curve;
+  const rocData = roc ? roc.fpr.map((fpr, i) => ({ fpr, tpr: roc.tpr[i] })) : null;
+
+  // Confusion matrix helpers
+  const cm = classification.confusion_matrix;
+
+  return (
+    <div style={{ marginTop: 24 }}>
+      <h3 style={{ fontSize: 14, margin: "0 0 12px" }}>Model visualisations</h3>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+
+        {/* Predicted vs actual scatter */}
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 13, color: "var(--ink-2)", marginBottom: 6, display: "flex", alignItems: "center" }}>
+            Predicted vs actual revenue
+            <InfoTip placement="bottom">
+              <>Each point is one <strong>Nov–Dec hold-out day</strong>. A perfect model
+              would put every point on the grey diagonal. Scatter above/below shows where the model
+              over- or under-predicts.</>
+            </InfoTip>
+          </div>
+          {pvaData ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <ScatterChart margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--line-soft)" />
+                <XAxis dataKey="actual" type="number" name="Actual" fontSize={11}
+                       tickFormatter={(v: number) => `$${Math.round(v / 1000)}k`}
+                       label={{ value: "Actual ($)", position: "insideBottom", offset: -2, fontSize: 11 }} />
+                <YAxis dataKey="predicted" type="number" name="Predicted" fontSize={11}
+                       tickFormatter={(v: number) => `$${Math.round(v / 1000)}k`}
+                       label={{ value: "Predicted", angle: -90, position: "insideLeft", offset: 8, fontSize: 11 }} />
+                <Tooltip
+                  formatter={(v: number, name: string) => [`$${v.toLocaleString()}`, name]}
+                  cursor={{ strokeDasharray: "3 3" }}
+                />
+                <Scatter data={pvaData} fill={ORANGE} opacity={0.7} />
+              </ScatterChart>
+            </ResponsiveContainer>
+          ) : <span style={{ color: "var(--ink-3)", fontSize: 13 }}>No data.</span>}
+          <p style={{ fontSize: 12, color: "var(--ink-3)", margin: "4px 0 0" }}>
+            Best regression model — {regression.best_model ?? ""}
+          </p>
+        </div>
+
+        {/* ROC curve */}
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 13, color: "var(--ink-2)", marginBottom: 6, display: "flex", alignItems: "center" }}>
+            ROC curve — classifier
+            <InfoTip placement="bottom">
+              <>The <strong>ROC curve</strong> shows the trade-off between catching real
+              busy days (true-positive rate) and false alarms (false-positive rate) as the
+              decision threshold changes. The grey diagonal is a random coin-flip (AUC = 0.50).
+              A curve closer to the top-left corner means a better classifier.</>
+            </InfoTip>
+          </div>
+          {rocData ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={rocData} margin={{ top: 4, right: 8, bottom: 20, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--line-soft)" />
+                <XAxis dataKey="fpr" type="number" domain={[0, 1]} fontSize={11}
+                       label={{ value: "False positive rate", position: "insideBottom", offset: -12, fontSize: 11 }} />
+                <YAxis dataKey="tpr" type="number" domain={[0, 1]} fontSize={11}
+                       label={{ value: "True positive rate", angle: -90, position: "insideLeft", offset: 12, fontSize: 11 }} />
+                <Tooltip formatter={(v: number, name: string) =>
+                  [v.toFixed(3), name === "tpr" ? "TPR" : "FPR"]} />
+                {/* diagonal baseline */}
+                <Line data={[{ fpr: 0, tpr: 0 }, { fpr: 1, tpr: 1 }]}
+                      dataKey="tpr" dot={false} stroke="#ccc" strokeDasharray="4 4" strokeWidth={1} />
+                <Line dataKey="tpr" dot={false} stroke={BLUE} strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : <span style={{ color: "var(--ink-3)", fontSize: 13 }}>No data.</span>}
+          <p style={{ fontSize: 12, color: "var(--ink-3)", margin: "4px 0 0" }}>
+            {classification.best_model ?? ""} — AUC {classification.roc_auc?.toFixed(3) ?? "—"}
+          </p>
+        </div>
+
+        {/* Confusion matrix */}
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 13, color: "var(--ink-2)", marginBottom: 6, display: "flex", alignItems: "center" }}>
+            Confusion matrix
+            <InfoTip placement="bottom" align="end">
+              <>The <strong>confusion matrix</strong> counts predictions vs reality on the
+              Nov–Dec hold-out. Rows = actual class, columns = predicted class.
+              Cells on the diagonal are correct calls; off-diagonal cells are mistakes.
+              False negatives (missed busy days) cost more operationally than false positives.</>
+            </InfoTip>
+          </div>
+          {cm ? <ConfusionMatrix cm={cm} /> : <span style={{ color: "var(--ink-3)", fontSize: 13 }}>No data.</span>}
+          <p style={{ fontSize: 12, color: "var(--ink-3)", margin: "4px 0 0" }}>
+            {classification.best_model ?? ""} — Nov–Dec hold-out
+          </p>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+function ConfusionMatrix({ cm }: { cm: number[][] }) {
+  const labels = ["Normal", "High demand"];
+  const max = Math.max(...cm.flat(), 1);
+  return (
+    <table style={{ borderCollapse: "separate", borderSpacing: 4, margin: "0 auto" }}>
+      <thead>
+        <tr>
+          <th style={{ fontSize: 10, color: "var(--ink-3)", padding: "0 6px 4px", textAlign: "right" }}>
+            Actual ↓ / Pred →
+          </th>
+          {labels.map((l) => (
+            <th key={l} style={{ fontSize: 11, color: "var(--ink-2)", padding: "0 4px 4px", textAlign: "center" }}>{l}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {cm.map((row, i) => (
+          <tr key={i}>
+            <td style={{ fontSize: 11, color: "var(--ink-2)", padding: "0 8px 0 0", textAlign: "right" }}>{labels[i]}</td>
+            {row.map((v, j) => {
+              const isCorrect = i === j;
+              const intensity = v / max;
+              return (
+                <td key={j} style={{
+                  width: 64, height: 52, textAlign: "center", verticalAlign: "middle",
+                  borderRadius: 6, fontSize: 18, fontWeight: 700,
+                  color: intensity > 0.5 ? "#fff" : "var(--ink)",
+                  background: isCorrect
+                    ? `rgba(35, 96, 196, ${0.15 + intensity * 0.8})`
+                    : `rgba(255, 72, 0, ${0.1 + intensity * 0.7})`,
+                }}>
+                  {v}
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }

@@ -54,6 +54,25 @@ def build_payload() -> dict:
 
     leaderboard = json.loads((MODELS_DIR / "leaderboard.json").read_text(encoding="utf-8"))
 
+    # Pull model diagnostics (ROC curve, confusion matrix, predicted-vs-actual)
+    # from report_artifacts.json so the dashboard can render them without needing
+    # the heavy sklearn/model files at runtime.
+    report_art = json.loads((MODELS_DIR / "report_artifacts.json").read_text(encoding="utf-8"))
+    reg_art = report_art.get("regression", {})
+    clf_art = report_art.get("classification", {})
+    model_diagnostics = {
+        "regression": {
+            "best_model": reg_art.get("best_model"),
+            "predicted_vs_actual": reg_art.get("predicted_vs_actual"),
+        },
+        "classification": {
+            "best_model": clf_art.get("best_model"),
+            "confusion_matrix": clf_art.get("confusion_matrix"),
+            "roc_curve": clf_art.get("roc_curve"),
+            "roc_auc": clf_art.get("roc_auc"),
+        },
+    }
+
     return {
         "year": 2015,
         "models": {"regression": reg["features"], "classification": clf["features"],
@@ -61,6 +80,7 @@ def build_payload() -> dict:
         "leaderboard": leaderboard,
         "charts": chart_data(daily),
         "daily": daily_records,
+        "model_diagnostics": model_diagnostics,
     }
 
 

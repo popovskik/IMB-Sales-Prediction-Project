@@ -36,12 +36,26 @@ export interface Charts {
   heatmap: { rows: string[]; cols: string[]; values: (number | null)[][] };
 }
 
+export interface ModelDiagnostics {
+  regression: {
+    best_model: string | null;
+    predicted_vs_actual: { dates: string[]; actual: number[]; predicted: number[] } | null;
+  };
+  classification: {
+    best_model: string | null;
+    confusion_matrix: number[][] | null;
+    roc_curve: { fpr: number[]; tpr: number[] } | null;
+    roc_auc: number | null;
+  };
+}
+
 export interface Predictions {
   year: number;
   models: { regression: string[]; classification: string[]; sklearn_version: string | null };
   leaderboard: LeaderboardRow[];
   charts: Charts;
   daily: DailyRecord[];
+  model_diagnostics?: ModelDiagnostics;
 }
 
 export interface PredictResponse {
