@@ -85,7 +85,7 @@ export function Predictor({ daily }: { daily: DailyRecord[] }) {
             Predicted daily revenue
             <InfoTip>The model's estimate of total revenue for the chosen date, based only on the calendar (weekday, month, season). A planning ballpark, not a guarantee.</InfoTip>
           </div>
-          <div style={{ fontFamily: "Poppins, sans-serif", fontSize: 40, fontWeight: 800, color: "var(--ink)" }}>
+          <div style={{ fontFamily: "Poppins, sans-serif", fontSize: 28, fontWeight: 800, color: "var(--ink)" }}>
             ${Math.round(result.predicted_revenue).toLocaleString()}
           </div>
           <div style={{ marginTop: 8, display: "flex", gap: 12, alignItems: "center" }}>

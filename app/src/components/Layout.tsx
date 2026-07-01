@@ -24,9 +24,6 @@ export function Layout({ children, summary }: { children: ReactNode; summary?: C
           <span style={{ background: "var(--orange)", color: "#fff", padding: "9px 12px", borderRadius: 10, fontWeight: 600 }}>
             Sales Statistics
           </span>
-          {["Live Orders", "Menu Performance", "Reviews", "Staff"].map((s) => (
-            <span key={s} style={{ color: "rgba(255,255,255,0.55)", padding: "9px 12px" }}>{s}</span>
-          ))}
         </nav>
       </aside>
 
