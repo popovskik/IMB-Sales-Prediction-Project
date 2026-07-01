@@ -309,6 +309,68 @@ fig;
   at inference time) cannot match. SARIMA is included as a **report-only** comparison row; it
   does not affect model selection or the live predictor.
 
+## 6a. Time-series diagnostics (SARIMA justification)
+
+The three plots below document the evidence that motivated trying SARIMA and
+explain the auto_arima parameter choices.
+
+```{python}
+#| label: adf-test
+#| code-fold: true
+sarima_art = artifacts["regression"]["sarima"]
+adf = sarima_art["adf"]
+
+print("=== Augmented Dickey-Fuller test — full daily revenue series (2015) ===")
+print(f"  Test statistic  : {adf['stat']:>10.4f}")
+print(f"  p-value         : {adf['p_value']:>10.4f}")
+for k, v in adf["critical_values"].items():
+    print(f"  Critical {k:>4s}   : {v:>10.4f}")
+verdict = (
+    "✓ Stationary at 5 % level (p < 0.05) — no mandatory differencing."
+    if adf["stationary"]
+    else "✗ Non-stationary (p ≥ 0.05) — auto_arima applied differencing (d ≥ 1)."
+)
+print(f"\n  {verdict}")
+order = tuple(sarima_art["order"])
+sorder = tuple(sarima_art["seasonal_order"])
+print(f"\n  SARIMA order selected by auto_arima (AIC criterion): {order}×{sorder}")
+```
+
+```{python}
+#| label: fig-acf-pacf
+#| fig-cap: "ACF and PACF of daily revenue. The weekly spike pattern at lags 7, 14, 21 confirms the dominant 7-day seasonal cycle that SARIMA's seasonal component (m = 7) models. The decaying ACF and relatively quick PACF cut-off are consistent with a low-order AR process."
+import matplotlib.pyplot as plt
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+
+y_full = daily["daily_revenue"].values
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 3.8))
+plot_acf(y_full, lags=28, ax=ax1, color="#ff4800", alpha=0.05)
+plot_pacf(y_full, lags=28, ax=ax2, color="#ff4800", alpha=0.05)
+ax1.set_title("ACF — daily revenue (lags 0–28)")
+ax2.set_title("PACF — daily revenue (lags 0–28)")
+fig.tight_layout()
+fig;
+```
+
+```{python}
+#| label: fig-sarima-forecast
+#| fig-cap: "SARIMA forecast vs actual daily revenue for the Nov–Dec hold-out (61-day evaluation window from a 92-day out-of-sample horizon). The model captures the weekly rhythm loosely, but error accumulates over the long window — consistent with the near-zero test R²."
+import pandas as pd
+import matplotlib.pyplot as plt
+
+sarima_art = artifacts["regression"]["sarima"]
+dates = pd.to_datetime(sarima_art["forecast_dates"])
+fig, ax = plt.subplots(figsize=(9, 3.8))
+ax.plot(dates, sarima_art["forecast_actual"], color="#333", label="Actual", lw=1.5)
+ax.plot(dates, sarima_art["forecast_predicted"], color="#ff4800", ls="--",
+        label="SARIMA forecast", lw=1.5)
+ax.set_xlabel("Date"); ax.set_ylabel("Daily revenue ($)")
+ax.set_title("SARIMA forecast vs actual — Nov–Dec 2015")
+ax.legend(); ax.grid(alpha=0.3)
+fig.tight_layout()
+fig;
+```
+
 ## Would more data help? A learning curve
 
 ```{python}

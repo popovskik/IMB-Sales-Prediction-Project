@@ -2240,6 +2240,7 @@ var requirejs,require,define;(function(global,setTimeout){var req,s,head,baseEle
   </ul></li>
   <li><a href="#honest-evaluation" id="toc-honest-evaluation" class="nav-link" data-scroll-target="#honest-evaluation">6. Honest evaluation</a>
   <ul class="collapse">
+  <li><a href="#a.-time-series-diagnostics-sarima-justification" id="toc-a.-time-series-diagnostics-sarima-justification" class="nav-link" data-scroll-target="#a.-time-series-diagnostics-sarima-justification">6a. Time-series diagnostics (SARIMA justification)</a></li>
   <li><a href="#would-more-data-help-a-learning-curve" id="toc-would-more-data-help-a-learning-curve" class="nav-link" data-scroll-target="#would-more-data-help-a-learning-curve">Would more data help? A learning curve</a></li>
   </ul></li>
   <li><a href="#business-interpretation" id="toc-business-interpretation" class="nav-link" data-scroll-target="#business-interpretation">7. Business interpretation</a>
@@ -2778,26 +2779,113 @@ Split: train = Jan–Sep, validation = Oct, test = Nov–Dec (time-ordered).</co
 <li><strong>A feature we tried that did <em>not</em> help (reported, not hidden).</strong> We added a leakage-safe US-holiday and payday calendar (the <code>XGBoost (+holidays)</code> row above). It moved cross-validated R² only from 0.212 to 0.214 — noise — and was <em>worse</em> on the hold-out. The reason is concrete: this restaurant’s closed days (four October Mondays, two September days) don’t line up with public holidays — only 25 December does — so a holiday flag has almost nothing to predict here. We kept the negative result and <strong>did not deploy it</strong>; a calendar of <em>this venue’s own</em> closures would be the useful version, which again points back to needing more of its data.</li>
 <li><strong>A time-series paradigm comparison: SARIMA.</strong> At the course instructor’s suggestion, we added a classical <strong>SARIMA(p,d,q)(P,D,Q)[7]</strong> model as a fifth regression comparison row (auto-selected via <code>pmdarima.auto_arima</code>, seasonal period m = 7 for the weekly cycle). SARIMA explicitly models autocorrelation and weekly seasonality — the same weekly pattern that XGBoost approximates via cyclical day-of-week encoding. The model was fitted on the training series (Jan–Sep only) and generated a <strong>pure out-of-sample 92-day forecast</strong> evaluated on the same Nov–Dec hold-out as every other model. No future data entered the fit. Result: <strong>test R² = −0.005 — essentially tied with the Dummy baseline.</strong> This is the expected outcome for a 92-day ARIMA horizon trained on a single year: error accumulates over long forecast windows, and 52 weekly cycles is insufficient for robust seasonal parameter estimation. The finding confirms that the cyclical encoding in XGBoost extracts as much predictive signal from this dataset as a classical time-series model — and with the decisive advantage of being deployable from a bare date, which ARIMA (requiring the observed series at inference time) cannot match. SARIMA is included as a <strong>report-only</strong> comparison row; it does not affect model selection or the live predictor.</li>
 </ul>
+<section id="a.-time-series-diagnostics-sarima-justification" class="level2">
+<h2 class="anchored" data-anchor-id="a.-time-series-diagnostics-sarima-justification">6a. Time-series diagnostics (SARIMA justification)</h2>
+<p>The three plots below document the evidence that motivated trying SARIMA and explain the auto_arima parameter choices.</p>
+<div id="adf-test" class="cell" data-execution_count="15">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>sarima_art <span class="op">=</span> artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;sarima&quot;</span>]</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>adf <span class="op">=</span> sarima_art[<span class="st">&quot;adf&quot;</span>]</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">&quot;=== Augmented Dickey-Fuller test — full daily revenue series (2015) ===&quot;</span>)</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f&quot;  Test statistic  : </span><span class="sc">{</span>adf[<span class="st">&#39;stat&#39;</span>]<span class="sc">:&gt;10.4f}</span><span class="ss">&quot;</span>)</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f&quot;  p-value         : </span><span class="sc">{</span>adf[<span class="st">&#39;p_value&#39;</span>]<span class="sc">:&gt;10.4f}</span><span class="ss">&quot;</span>)</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> k, v <span class="kw">in</span> adf[<span class="st">&quot;critical_values&quot;</span>].items():</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f&quot;  Critical </span><span class="sc">{</span>k<span class="sc">:&gt;4s}</span><span class="ss">   : </span><span class="sc">{</span>v<span class="sc">:&gt;10.4f}</span><span class="ss">&quot;</span>)</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>verdict <span class="op">=</span> (</span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;✓ Stationary at 5 </span><span class="sc">% le</span><span class="st">vel (p &lt; 0.05) — no mandatory differencing.&quot;</span></span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> adf[<span class="st">&quot;stationary&quot;</span>]</span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">else</span> <span class="st">&quot;✗ Non-stationary (p ≥ 0.05) — auto_arima applied differencing (d ≥ 1).&quot;</span></span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f&quot;</span><span class="ch">\n</span><span class="ss">  </span><span class="sc">{</span>verdict<span class="sc">}</span><span class="ss">&quot;</span>)</span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a>order <span class="op">=</span> <span class="bu">tuple</span>(sarima_art[<span class="st">&quot;order&quot;</span>])</span>
+<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a>sorder <span class="op">=</span> <span class="bu">tuple</span>(sarima_art[<span class="st">&quot;seasonal_order&quot;</span>])</span>
+<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f&quot;</span><span class="ch">\n</span><span class="ss">  SARIMA order selected by auto_arima (AIC criterion): </span><span class="sc">{</span>order<span class="sc">}</span><span class="ss">×</span><span class="sc">{</span>sorder<span class="sc">}</span><span class="ss">&quot;</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>=== Augmented Dickey-Fuller test — full daily revenue series (2015) ===
+  Test statistic  :    -3.7429
+  p-value         :     0.0035
+  Critical   1%   :    -3.4492
+  Critical   5%   :    -2.8698
+  Critical  10%   :    -2.5712
+
+  ✓ Stationary at 5 % level (p &lt; 0.05) — no mandatory differencing.
+
+  SARIMA order selected by auto_arima (AIC criterion): (0, 0, 1)×(0, 0, 2, 7)</code></pre>
+</div>
+</div>
+<div id="fig-acf-pacf" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="16">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-acf-pacf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> statsmodels.graphics.tsaplots <span class="im">import</span> plot_acf, plot_pacf</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>y_full <span class="op">=</span> daily[<span class="st">&quot;daily_revenue&quot;</span>].values</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>fig, (ax1, ax2) <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="fl">3.8</span>))</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>plot_acf(y_full, lags<span class="op">=</span><span class="dv">28</span>, ax<span class="op">=</span>ax1, color<span class="op">=</span><span class="st">&quot;#ff4800&quot;</span>, alpha<span class="op">=</span><span class="fl">0.05</span>)</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>plot_pacf(y_full, lags<span class="op">=</span><span class="dv">28</span>, ax<span class="op">=</span>ax2, color<span class="op">=</span><span class="st">&quot;#ff4800&quot;</span>, alpha<span class="op">=</span><span class="fl">0.05</span>)</span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>ax1.set_title(<span class="st">&quot;ACF — daily revenue (lags 0–28)&quot;</span>)</span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>ax2.set_title(<span class="st">&quot;PACF — daily revenue (lags 0–28)&quot;</span>)</span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()</span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig quarto-uncaptioned" id="fig-acf-pacf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure 6
+</figcaption>
+</figure>
+</div>
+<div id="fig-sarima-forecast" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="17">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-sarima-forecast-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>sarima_art <span class="op">=</span> artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;sarima&quot;</span>]</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>dates <span class="op">=</span> pd.to_datetime(sarima_art[<span class="st">&quot;forecast_dates&quot;</span>])</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">9</span>, <span class="fl">3.8</span>))</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>ax.plot(dates, sarima_art[<span class="st">&quot;forecast_actual&quot;</span>], color<span class="op">=</span><span class="st">&quot;#333&quot;</span>, label<span class="op">=</span><span class="st">&quot;Actual&quot;</span>, lw<span class="op">=</span><span class="fl">1.5</span>)</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>ax.plot(dates, sarima_art[<span class="st">&quot;forecast_predicted&quot;</span>], color<span class="op">=</span><span class="st">&quot;#ff4800&quot;</span>, ls<span class="op">=</span><span class="st">&quot;--&quot;</span>,</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>        label<span class="op">=</span><span class="st">&quot;SARIMA forecast&quot;</span>, lw<span class="op">=</span><span class="fl">1.5</span>)</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">&quot;Date&quot;</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">&quot;Daily revenue ($)&quot;</span>)</span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">&quot;SARIMA forecast vs actual — Nov–Dec 2015&quot;</span>)</span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a>ax.legend()<span class="op">;</span> ax.grid(alpha<span class="op">=</span><span class="fl">0.3</span>)</span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()</span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig quarto-uncaptioned" id="fig-sarima-forecast-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure 7
+</figcaption>
+</figure>
+</div>
+</section>
 <section id="would-more-data-help-a-learning-curve" class="level2">
 <h2 class="anchored" data-anchor-id="would-more-data-help-a-learning-curve">Would more data help? A learning curve</h2>
-<div id="fig-learning" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="15">
+<div id="fig-learning" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="18">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-learning-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>lc <span class="op">=</span> artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;learning_curve&quot;</span>]</span>
-<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">8</span>, <span class="fl">3.6</span>))</span>
-<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>ax.plot(lc[<span class="st">&quot;train_sizes&quot;</span>], lc[<span class="st">&quot;train_r2&quot;</span>], marker<span class="op">=</span><span class="st">&quot;o&quot;</span>, label<span class="op">=</span><span class="st">&quot;train R²&quot;</span>)</span>
-<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>ax.plot(lc[<span class="st">&quot;train_sizes&quot;</span>], lc[<span class="st">&quot;cv_r2&quot;</span>], marker<span class="op">=</span><span class="st">&quot;o&quot;</span>, label<span class="op">=</span><span class="st">&quot;CV R² (TimeSeriesSplit)&quot;</span>)</span>
-<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>ax.axhline(<span class="dv">0</span>, color<span class="op">=</span><span class="st">&quot;grey&quot;</span>, lw<span class="op">=</span><span class="fl">0.8</span>, ls<span class="op">=</span><span class="st">&quot;--&quot;</span>)</span>
-<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">&quot;training days used (per CV fold)&quot;</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">&quot;R²&quot;</span>)<span class="op">;</span> ax.legend()<span class="op">;</span> ax.grid(alpha<span class="op">=</span><span class="fl">0.3</span>)</span>
-<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">&quot;XGBoost — learning curve&quot;</span>)</span>
-<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>lc <span class="op">=</span> artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;learning_curve&quot;</span>]</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">8</span>, <span class="fl">3.6</span>))</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>ax.plot(lc[<span class="st">&quot;train_sizes&quot;</span>], lc[<span class="st">&quot;train_r2&quot;</span>], marker<span class="op">=</span><span class="st">&quot;o&quot;</span>, label<span class="op">=</span><span class="st">&quot;train R²&quot;</span>)</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>ax.plot(lc[<span class="st">&quot;train_sizes&quot;</span>], lc[<span class="st">&quot;cv_r2&quot;</span>], marker<span class="op">=</span><span class="st">&quot;o&quot;</span>, label<span class="op">=</span><span class="st">&quot;CV R² (TimeSeriesSplit)&quot;</span>)</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>ax.axhline(<span class="dv">0</span>, color<span class="op">=</span><span class="st">&quot;grey&quot;</span>, lw<span class="op">=</span><span class="fl">0.8</span>, ls<span class="op">=</span><span class="st">&quot;--&quot;</span>)</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">&quot;training days used (per CV fold)&quot;</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">&quot;R²&quot;</span>)<span class="op">;</span> ax.legend()<span class="op">;</span> ax.grid(alpha<span class="op">=</span><span class="fl">0.3</span>)</span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">&quot;XGBoost — learning curve&quot;</span>)</span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig quarto-uncaptioned" id="fig-learning-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure 6
+Figure 8
 </figcaption>
 </figure>
 </div>
@@ -2814,29 +2902,29 @@ Figure 6
 </ul>
 <section id="which-features-matter-permutation-importance" class="level2">
 <h2 class="anchored" data-anchor-id="which-features-matter-permutation-importance">Which features matter? (permutation importance)</h2>
-<div id="fig-importance" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="16">
+<div id="fig-importance" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="19">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-importance-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
-<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> _imp_ax(ax, ranked, title, color):</span>
-<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>    top <span class="op">=</span> ranked[:<span class="dv">8</span>][::<span class="op">-</span><span class="dv">1</span>]</span>
-<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>    ax.barh([d[<span class="st">&quot;feature&quot;</span>] <span class="cf">for</span> d <span class="kw">in</span> top], [d[<span class="st">&quot;importance&quot;</span>] <span class="cf">for</span> d <span class="kw">in</span> top], color<span class="op">=</span>color)</span>
-<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>    ax.set_title(title, fontsize<span class="op">=</span><span class="dv">11</span>)<span class="op">;</span> ax.tick_params(labelsize<span class="op">=</span><span class="dv">8</span>)</span>
-<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>fig, axes <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="fl">3.8</span>))</span>
-<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>_imp_ax(axes[<span class="dv">0</span>], artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;permutation_importance&quot;</span>],</span>
-<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f&quot;Revenue — </span><span class="sc">{</span>artifacts[<span class="st">&#39;regression&#39;</span>][<span class="st">&#39;best_model&#39;</span>]<span class="sc">}</span><span class="ss">&quot;</span>, <span class="st">&quot;#ff4800&quot;</span>)</span>
-<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>_imp_ax(axes[<span class="dv">1</span>], artifacts[<span class="st">&quot;classification&quot;</span>][<span class="st">&quot;permutation_importance&quot;</span>],</span>
-<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f&quot;High-demand — </span><span class="sc">{</span>artifacts[<span class="st">&#39;classification&#39;</span>][<span class="st">&#39;best_model&#39;</span>]<span class="sc">}</span><span class="ss">&quot;</span>, <span class="st">&quot;#2360c4&quot;</span>)</span>
-<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()</span>
-<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> _imp_ax(ax, ranked, title, color):</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>    top <span class="op">=</span> ranked[:<span class="dv">8</span>][::<span class="op">-</span><span class="dv">1</span>]</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>    ax.barh([d[<span class="st">&quot;feature&quot;</span>] <span class="cf">for</span> d <span class="kw">in</span> top], [d[<span class="st">&quot;importance&quot;</span>] <span class="cf">for</span> d <span class="kw">in</span> top], color<span class="op">=</span>color)</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>    ax.set_title(title, fontsize<span class="op">=</span><span class="dv">11</span>)<span class="op">;</span> ax.tick_params(labelsize<span class="op">=</span><span class="dv">8</span>)</span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>fig, axes <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="fl">3.8</span>))</span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>_imp_ax(axes[<span class="dv">0</span>], artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;permutation_importance&quot;</span>],</span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f&quot;Revenue — </span><span class="sc">{</span>artifacts[<span class="st">&#39;regression&#39;</span>][<span class="st">&#39;best_model&#39;</span>]<span class="sc">}</span><span class="ss">&quot;</span>, <span class="st">&quot;#ff4800&quot;</span>)</span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a>_imp_ax(axes[<span class="dv">1</span>], artifacts[<span class="st">&quot;classification&quot;</span>][<span class="st">&quot;permutation_importance&quot;</span>],</span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f&quot;High-demand — </span><span class="sc">{</span>artifacts[<span class="st">&#39;classification&#39;</span>][<span class="st">&#39;best_model&#39;</span>]<span class="sc">}</span><span class="ss">&quot;</span>, <span class="st">&quot;#2360c4&quot;</span>)</span>
+<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()</span>
+<span id="cb23-14"><a href="#cb23-14" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig quarto-uncaptioned" id="fig-importance-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure 7
+Figure 9
 </figcaption>
 </figure>
 </div>
@@ -3301,384 +3389,446 @@ Figure 7
     }
   });
   </script><div class="modal fade" id="quarto-embedded-source-code-modal" tabindex="-1" aria-labelledby="quarto-embedded-source-code-modal-label" aria-hidden="true"><div class="modal-dialog modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="quarto-embedded-source-code-modal-label">Source Code</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20" data-shortcodes="false"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
-<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="an">title:</span><span class="co"> &quot;Restaurant Demand Analytics: Predicting Daily Revenue and High-Demand Days&quot;</span></span>
-<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="an">subtitle:</span><span class="co"> &quot;IMB MADA 2026 — End-to-End Machine Learning Capstone&quot;</span></span>
-<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a><span class="an">author:</span><span class="co"> &quot;Aleksandar Popovski&quot;</span></span>
-<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a><span class="an">date:</span><span class="co"> 2026-06-27</span></span>
-<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a><span class="an">format:</span></span>
-<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a><span class="co">  html:</span></span>
-<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a><span class="co">    toc: true</span></span>
-<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a><span class="co">    toc-depth: 3</span></span>
-<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a><span class="co">    code-fold: true</span></span>
-<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a><span class="co">    code-tools: true</span></span>
-<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a><span class="co">    theme: cosmo</span></span>
-<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a><span class="co">    embed-resources: true</span></span>
-<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a><span class="co">    fig-width: 8</span></span>
-<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a><span class="co">    fig-height: 4</span></span>
-<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a><span class="an">jupyter:</span><span class="co"> python3</span></span>
-<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a><span class="an">execute:</span></span>
-<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a><span class="co">  warning: false</span></span>
-<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a><span class="co">  echo: true</span></span>
-<span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
-<span id="cb20-21"><a href="#cb20-21" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-24"><a href="#cb20-24" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
-<span id="cb20-25"><a href="#cb20-25" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: setup</span></span>
-<span id="cb20-26"><a href="#cb20-26" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb20-27"><a href="#cb20-27" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> json</span>
-<span id="cb20-28"><a href="#cb20-28" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
-<span id="cb20-29"><a href="#cb20-29" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-30"><a href="#cb20-30" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
-<span id="cb20-31"><a href="#cb20-31" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-32"><a href="#cb20-32" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> src.data <span class="im">import</span> build_daily</span>
-<span id="cb20-33"><a href="#cb20-33" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> src.eda <span class="im">import</span> (chart_data, fig_correlation_heatmap, fig_heatmap, fig_revenue_by_dow,</span>
-<span id="cb20-34"><a href="#cb20-34" aria-hidden="true" tabindex="-1"></a>                     fig_revenue_by_month, fig_revenue_distribution, summary_stats)</span>
-<span id="cb20-35"><a href="#cb20-35" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> src.features <span class="im">import</span> build_features</span>
-<span id="cb20-36"><a href="#cb20-36" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> src <span class="im">import</span> augment</span>
-<span id="cb20-37"><a href="#cb20-37" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-38"><a href="#cb20-38" aria-hidden="true" tabindex="-1"></a>MODELS <span class="op">=</span> Path(<span class="st">&quot;models&quot;</span>)</span>
-<span id="cb20-39"><a href="#cb20-39" aria-hidden="true" tabindex="-1"></a>leaderboard <span class="op">=</span> json.loads((MODELS <span class="op">/</span> <span class="st">&quot;leaderboard.json&quot;</span>).read_text())</span>
-<span id="cb20-40"><a href="#cb20-40" aria-hidden="true" tabindex="-1"></a>artifacts <span class="op">=</span> json.loads((MODELS <span class="op">/</span> <span class="st">&quot;report_artifacts.json&quot;</span>).read_text())</span>
-<span id="cb20-41"><a href="#cb20-41" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-42"><a href="#cb20-42" aria-hidden="true" tabindex="-1"></a>daily <span class="op">=</span> build_daily()</span>
-<span id="cb20-43"><a href="#cb20-43" aria-hidden="true" tabindex="-1"></a>features <span class="op">=</span> build_features(daily)</span>
-<span id="cb20-44"><a href="#cb20-44" aria-hidden="true" tabindex="-1"></a>summary <span class="op">=</span> summary_stats(daily)</span>
-<span id="cb20-45"><a href="#cb20-45" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb20-46"><a href="#cb20-46" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-47"><a href="#cb20-47" aria-hidden="true" tabindex="-1"></a><span class="fu"># 1. The question</span></span>
-<span id="cb20-48"><a href="#cb20-48" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-49"><a href="#cb20-49" aria-hidden="true" tabindex="-1"></a>A pizza restaurant wants to plan **staffing, inventory, and purchasing** ahead of demand.</span>
-<span id="cb20-50"><a href="#cb20-50" aria-hidden="true" tabindex="-1"></a>Two operational questions drive this study, using one full year (2015) of order data:</span>
-<span id="cb20-51"><a href="#cb20-51" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-52"><a href="#cb20-52" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Regression — how much will we take today?** Predict <span class="in">`Daily_Revenue`</span>, the sum of</span>
-<span id="cb20-53"><a href="#cb20-53" aria-hidden="true" tabindex="-1"></a>  <span class="in">`price × quantity`</span> across all of a day&#39;s orders.</span>
-<span id="cb20-54"><a href="#cb20-54" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Classification — will today be busy?** Predict <span class="in">`High_Demand_Day`</span>: a day whose order</span>
-<span id="cb20-55"><a href="#cb20-55" aria-hidden="true" tabindex="-1"></a>  count exceeds the year&#39;s mean daily order count.</span>
-<span id="cb20-56"><a href="#cb20-56" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-57"><a href="#cb20-57" aria-hidden="true" tabindex="-1"></a>Both targets are aggregated to **one row per calendar day**, and both models use **only</span>
-<span id="cb20-58"><a href="#cb20-58" aria-hidden="true" tabindex="-1"></a>features derived from the date** — so a prediction can be made for any future day with no</span>
-<span id="cb20-59"><a href="#cb20-59" aria-hidden="true" tabindex="-1"></a>other information.</span>
-<span id="cb20-60"><a href="#cb20-60" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-61"><a href="#cb20-61" aria-hidden="true" tabindex="-1"></a><span class="fu"># 2. The data</span></span>
-<span id="cb20-62"><a href="#cb20-62" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-63"><a href="#cb20-63" aria-hidden="true" tabindex="-1"></a>The <span class="co">[</span><span class="ot">Maven Pizza Place Sales</span><span class="co">](https://mavenanalytics.io/data-playground/pizza-place-sales)</span></span>
-<span id="cb20-64"><a href="#cb20-64" aria-hidden="true" tabindex="-1"></a>dataset is four linked tables: <span class="in">`orders`</span>, <span class="in">`order_details`</span>, <span class="in">`pizzas`</span>, and <span class="in">`pizza_types`</span></span>
-<span id="cb20-65"><a href="#cb20-65" aria-hidden="true" tabindex="-1"></a>(~48,620 line items across ~21,350 orders). We join them, compute line revenue, and</span>
-<span id="cb20-66"><a href="#cb20-66" aria-hidden="true" tabindex="-1"></a>aggregate to a daily series.</span>
-<span id="cb20-67"><a href="#cb20-67" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-70"><a href="#cb20-70" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
-<span id="cb20-71"><a href="#cb20-71" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: data-overview</span></span>
-<span id="cb20-72"><a href="#cb20-72" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f&quot;Calendar days (2015):       </span><span class="sc">{</span>summary[<span class="st">&#39;n_days&#39;</span>]<span class="sc">}</span><span class="ss">&quot;</span>)</span>
-<span id="cb20-73"><a href="#cb20-73" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f&quot;Closed (zero-order) days:   </span><span class="sc">{</span>summary[<span class="st">&#39;closed_days&#39;</span>]<span class="sc">}</span><span class="ss">&quot;</span>)</span>
-<span id="cb20-74"><a href="#cb20-74" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f&quot;Total revenue:              $</span><span class="sc">{</span>summary[<span class="st">&#39;total_revenue&#39;</span>]<span class="sc">:,.0f}</span><span class="ss">&quot;</span>)</span>
-<span id="cb20-75"><a href="#cb20-75" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f&quot;Mean daily revenue:         $</span><span class="sc">{</span>summary[<span class="st">&#39;mean_daily_revenue&#39;</span>]<span class="sc">:,.0f}</span><span class="ss">&quot;</span>)</span>
-<span id="cb20-76"><a href="#cb20-76" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f&quot;Mean daily orders:          </span><span class="sc">{</span>summary[<span class="st">&#39;mean_daily_orders&#39;</span>]<span class="sc">:.1f}</span><span class="ss">&quot;</span>)</span>
-<span id="cb20-77"><a href="#cb20-77" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f&quot;High-demand days (share):   </span><span class="sc">{</span>summary[<span class="st">&#39;high_demand_share&#39;</span>]<span class="sc">:.1%}</span><span class="ss">&quot;</span>)</span>
-<span id="cb20-78"><a href="#cb20-78" aria-hidden="true" tabindex="-1"></a>daily.head()</span>
-<span id="cb20-79"><a href="#cb20-79" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb20-80"><a href="#cb20-80" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-81"><a href="#cb20-81" aria-hidden="true" tabindex="-1"></a>**Two data-cleaning decisions worth flagging (honest data handling):**</span>
-<span id="cb20-82"><a href="#cb20-82" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-83"><a href="#cb20-83" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>**Encoding.** `pizza_types.csv` ships as **Windows-1252**, not UTF-8 (curly</span>
-<span id="cb20-84"><a href="#cb20-84" aria-hidden="true" tabindex="-1"></a>   apostrophes in ingredient names such as *&#39;Nduja*). Reading it as UTF-8 raises a</span>
-<span id="cb20-85"><a href="#cb20-85" aria-hidden="true" tabindex="-1"></a>   <span class="in">`UnicodeDecodeError`</span>; we read it with the correct <span class="in">`cp1252`</span> encoding.</span>
-<span id="cb20-86"><a href="#cb20-86" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>**Closed days.** Seven 2015 dates have **zero orders** — including 25 December</span>
-<span id="cb20-87"><a href="#cb20-87" aria-hidden="true" tabindex="-1"></a>   (Christmas) and four consecutive October Mondays. We reindex the series to the full</span>
-<span id="cb20-88"><a href="#cb20-88" aria-hidden="true" tabindex="-1"></a>   calendar and treat these as genuine zero-revenue closed days rather than dropping them,</span>
-<span id="cb20-89"><a href="#cb20-89" aria-hidden="true" tabindex="-1"></a>   so the daily index stays contiguous (required by the lag features below). The October</span>
-<span id="cb20-90"><a href="#cb20-90" aria-hidden="true" tabindex="-1"></a>   Monday pattern is flagged as a possible data-collection gap rather than a confirmed</span>
-<span id="cb20-91"><a href="#cb20-91" aria-hidden="true" tabindex="-1"></a>   closure.</span>
-<span id="cb20-92"><a href="#cb20-92" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-93"><a href="#cb20-93" aria-hidden="true" tabindex="-1"></a><span class="fu"># 3. Exploratory analysis</span></span>
-<span id="cb20-94"><a href="#cb20-94" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-95"><a href="#cb20-95" aria-hidden="true" tabindex="-1"></a>Daily revenue is driven mostly by **day-of-week** and **seasonal** structure.</span>
-<span id="cb20-96"><a href="#cb20-96" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-99"><a href="#cb20-99" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
-<span id="cb20-100"><a href="#cb20-100" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-month</span></span>
-<span id="cb20-101"><a href="#cb20-101" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Mean daily revenue by month — a mild seasonal rise into the summer and year-end.&quot;</span></span>
-<span id="cb20-102"><a href="#cb20-102" aria-hidden="true" tabindex="-1"></a>fig_revenue_by_month(daily)<span class="op">;</span></span>
-<span id="cb20-103"><a href="#cb20-103" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb20-104"><a href="#cb20-104" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-107"><a href="#cb20-107" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
-<span id="cb20-108"><a href="#cb20-108" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-dow</span></span>
-<span id="cb20-109"><a href="#cb20-109" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Mean daily revenue by day of week — weekends (and Fridays) run higher.&quot;</span></span>
-<span id="cb20-110"><a href="#cb20-110" aria-hidden="true" tabindex="-1"></a>fig_revenue_by_dow(daily)<span class="op">;</span></span>
-<span id="cb20-111"><a href="#cb20-111" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb20-112"><a href="#cb20-112" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-115"><a href="#cb20-115" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
-<span id="cb20-116"><a href="#cb20-116" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-heatmap</span></span>
-<span id="cb20-117"><a href="#cb20-117" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Day-of-week x month heatmap — the weekly rhythm is stable across the year.&quot;</span></span>
-<span id="cb20-118"><a href="#cb20-118" aria-hidden="true" tabindex="-1"></a>fig_heatmap(daily)<span class="op">;</span></span>
-<span id="cb20-119"><a href="#cb20-119" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb20-120"><a href="#cb20-120" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-123"><a href="#cb20-123" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
-<span id="cb20-124"><a href="#cb20-124" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-dist</span></span>
-<span id="cb20-125"><a href="#cb20-125" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Distribution of daily revenue. The spike near zero is the closed days.&quot;</span></span>
-<span id="cb20-126"><a href="#cb20-126" aria-hidden="true" tabindex="-1"></a>fig_revenue_distribution(daily)<span class="op">;</span></span>
-<span id="cb20-127"><a href="#cb20-127" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb20-128"><a href="#cb20-128" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-129"><a href="#cb20-129" aria-hidden="true" tabindex="-1"></a><span class="fu">### Correlation study</span></span>
-<span id="cb20-130"><a href="#cb20-130" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-133"><a href="#cb20-133" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
-<span id="cb20-134"><a href="#cb20-134" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-corr</span></span>
-<span id="cb20-135"><a href="#cb20-135" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Correlation between modelling features and both targets. The day-of-week / weekend block shows the strongest association with revenue; sin/cos encodings are by design highly collinear with their raw counterparts.&quot;</span></span>
-<span id="cb20-136"><a href="#cb20-136" aria-hidden="true" tabindex="-1"></a>fig_correlation_heatmap(features)<span class="op">;</span></span>
-<span id="cb20-137"><a href="#cb20-137" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb20-138"><a href="#cb20-138" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-139"><a href="#cb20-139" aria-hidden="true" tabindex="-1"></a>The correlation study confirms the EDA: **<span class="in">`is_weekend`</span> and the day-of-week encodings carry</span>
-<span id="cb20-140"><a href="#cb20-140" aria-hidden="true" tabindex="-1"></a>the strongest linear association with daily revenue and with high-demand days**, while month/</span>
-<span id="cb20-141"><a href="#cb20-141" aria-hidden="true" tabindex="-1"></a>seasonal terms are weaker. It also shows each cyclical <span class="in">`sin_*/cos_*`</span> feature is highly</span>
-<span id="cb20-142"><a href="#cb20-142" aria-hidden="true" tabindex="-1"></a>correlated with its raw calendar counterpart (e.g. <span class="in">`sin_dow`</span> with <span class="in">`day_of_week`</span>) — that</span>
-<span id="cb20-143"><a href="#cb20-143" aria-hidden="true" tabindex="-1"></a>redundancy is exactly why the pipeline runs a correlation/collinearity filter inside</span>
-<span id="cb20-144"><a href="#cb20-144" aria-hidden="true" tabindex="-1"></a><span class="in">`select_features`</span> before fitting, so the models aren&#39;t fed three copies of the same signal.</span>
-<span id="cb20-145"><a href="#cb20-145" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-146"><a href="#cb20-146" aria-hidden="true" tabindex="-1"></a><span class="fu">## 3a. Synthetic enrichment (clearly labelled — not used for modelling)</span></span>
-<span id="cb20-147"><a href="#cb20-147" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-148"><a href="#cb20-148" aria-hidden="true" tabindex="-1"></a><span class="at">&gt; **Synthetic data.** The raw dataset has no customer, table, or server identifiers.</span></span>
-<span id="cb20-149"><a href="#cb20-149" aria-hidden="true" tabindex="-1"></a><span class="at">&gt; With the professor&#39;s approval, we generate them to illustrate the kind of analytics a</span></span>
-<span id="cb20-150"><a href="#cb20-150" aria-hidden="true" tabindex="-1"></a><span class="at">&gt; real restaurant dashboard would show. **None of this synthetic data enters model</span></span>
-<span id="cb20-151"><a href="#cb20-151" aria-hidden="true" tabindex="-1"></a><span class="at">&gt; training** — the two models are fit solely on the real date-derived features.</span></span>
-<span id="cb20-152"><a href="#cb20-152" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-155"><a href="#cb20-155" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
-<span id="cb20-156"><a href="#cb20-156" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: synthetic-eda</span></span>
-<span id="cb20-157"><a href="#cb20-157" aria-hidden="true" tabindex="-1"></a>aug <span class="op">=</span> augment.augment_orders()</span>
-<span id="cb20-158"><a href="#cb20-158" aria-hidden="true" tabindex="-1"></a>freq <span class="op">=</span> augment.customer_frequency(aug)</span>
-<span id="cb20-159"><a href="#cb20-159" aria-hidden="true" tabindex="-1"></a>util <span class="op">=</span> augment.table_utilization(aug)</span>
-<span id="cb20-160"><a href="#cb20-160" aria-hidden="true" tabindex="-1"></a>thru <span class="op">=</span> augment.server_throughput(aug)</span>
-<span id="cb20-161"><a href="#cb20-161" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">&quot;Customer base (synthetic):&quot;</span>)</span>
-<span id="cb20-162"><a href="#cb20-162" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(freq.to_string(index<span class="op">=</span><span class="va">False</span>))</span>
-<span id="cb20-163"><a href="#cb20-163" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">&quot;</span><span class="ch">\n</span><span class="st">Orders per server (synthetic, shift-constrained):&quot;</span>)</span>
-<span id="cb20-164"><a href="#cb20-164" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(thru.to_string(index<span class="op">=</span><span class="va">False</span>))</span>
-<span id="cb20-165"><a href="#cb20-165" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb20-166"><a href="#cb20-166" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-167"><a href="#cb20-167" aria-hidden="true" tabindex="-1"></a><span class="fu"># 4. Feature engineering (leakage-safe)</span></span>
-<span id="cb20-168"><a href="#cb20-168" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-169"><a href="#cb20-169" aria-hidden="true" tabindex="-1"></a>Two feature sets are built from the date (<span class="in">`src/features.py`</span>):</span>
-<span id="cb20-170"><a href="#cb20-170" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-171"><a href="#cb20-171" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Served set** — calendar parts (<span class="in">`day_of_week`</span>, <span class="in">`month`</span>, <span class="in">`week_of_year`</span>, <span class="in">`day_of_year`</span>,</span>
-<span id="cb20-172"><a href="#cb20-172" aria-hidden="true" tabindex="-1"></a>  <span class="in">`quarter`</span>), boolean flags (<span class="in">`is_weekend`</span>, <span class="in">`is_month_start`</span>, <span class="in">`is_month_end`</span>), and</span>
-<span id="cb20-173"><a href="#cb20-173" aria-hidden="true" tabindex="-1"></a>  **cyclical** <span class="in">`sin/cos`</span> encodings of weekday and month (so December sits next to January).</span>
-<span id="cb20-174"><a href="#cb20-174" aria-hidden="true" tabindex="-1"></a>  These are fully determined by the date, so the deployed API can compute them for any day.</span>
-<span id="cb20-175"><a href="#cb20-175" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Full set** — adds **past-only** lag/rolling features (<span class="in">`revenue_lag_1`</span>, <span class="in">`revenue_lag_7`</span>,</span>
-<span id="cb20-176"><a href="#cb20-176" aria-hidden="true" tabindex="-1"></a>  <span class="in">`rolling_revenue_7d`</span>, …). Each uses <span class="in">`shift`</span>, and the rolling mean uses <span class="in">`shift(1)`</span> first so</span>
-<span id="cb20-177"><a href="#cb20-177" aria-hidden="true" tabindex="-1"></a>  **today never leaks into its own feature**. Used only for an offline comparison, since a</span>
-<span id="cb20-178"><a href="#cb20-178" aria-hidden="true" tabindex="-1"></a>  date-only predictor has no &quot;yesterday&quot; at serve time.</span>
-<span id="cb20-179"><a href="#cb20-179" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-180"><a href="#cb20-180" aria-hidden="true" tabindex="-1"></a>**Leakage controls.** Scalers and the feature selector are fit **inside the training split</span>
-<span id="cb20-181"><a href="#cb20-181" aria-hidden="true" tabindex="-1"></a>only** (sklearn <span class="in">`Pipeline`</span>), and the data is split **chronologically** — never shuffled.</span>
-<span id="cb20-182"><a href="#cb20-182" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-185"><a href="#cb20-185" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
-<span id="cb20-186"><a href="#cb20-186" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: split</span></span>
-<span id="cb20-187"><a href="#cb20-187" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">&quot;Selected regression features:&quot;</span>, artifacts[<span class="st">&quot;selected_features&quot;</span>][<span class="st">&quot;regression&quot;</span>])</span>
-<span id="cb20-188"><a href="#cb20-188" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">&quot;Selected classification features:&quot;</span>, artifacts[<span class="st">&quot;selected_features&quot;</span>][<span class="st">&quot;classification&quot;</span>])</span>
-<span id="cb20-189"><a href="#cb20-189" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">&quot;</span><span class="ch">\n</span><span class="st">Split: train = Jan–Sep, validation = Oct, test = Nov–Dec (time-ordered).&quot;</span>)</span>
-<span id="cb20-190"><a href="#cb20-190" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb20-191"><a href="#cb20-191" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-192"><a href="#cb20-192" aria-hidden="true" tabindex="-1"></a><span class="fu"># 5. Models and the honest leaderboard</span></span>
-<span id="cb20-193"><a href="#cb20-193" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-194"><a href="#cb20-194" aria-hidden="true" tabindex="-1"></a>Each task trains a full ladder — **Dummy → linear → Decision Tree → tuned XGBoost** — with</span>
-<span id="cb20-195"><a href="#cb20-195" aria-hidden="true" tabindex="-1"></a>XGBoost tuned by <span class="in">`RandomizedSearchCV`</span> over a **`TimeSeriesSplit`** (so tuning never sees the</span>
-<span id="cb20-196"><a href="#cb20-196" aria-hidden="true" tabindex="-1"></a>future). We report **two** numbers per model: the **TimeSeriesSplit CV** score (the fairer</span>
-<span id="cb20-197"><a href="#cb20-197" aria-hidden="true" tabindex="-1"></a>estimate) and the **Nov–Dec hold-out** score.</span>
-<span id="cb20-198"><a href="#cb20-198" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-201"><a href="#cb20-201" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
-<span id="cb20-202"><a href="#cb20-202" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: leaderboard-tables</span></span>
-<span id="cb20-203"><a href="#cb20-203" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
-<span id="cb20-204"><a href="#cb20-204" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> reg_table(rows):</span>
-<span id="cb20-205"><a href="#cb20-205" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> []</span>
-<span id="cb20-206"><a href="#cb20-206" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> r <span class="kw">in</span> [r <span class="cf">for</span> r <span class="kw">in</span> rows <span class="cf">if</span> r[<span class="st">&quot;task&quot;</span>] <span class="op">==</span> <span class="st">&quot;regression&quot;</span>]:</span>
-<span id="cb20-207"><a href="#cb20-207" aria-hidden="true" tabindex="-1"></a>        out.append({</span>
-<span id="cb20-208"><a href="#cb20-208" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Model&quot;</span>: r[<span class="st">&quot;model&quot;</span>],</span>
-<span id="cb20-209"><a href="#cb20-209" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;CV R²&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;cv_r2&quot;</span>], <span class="dv">3</span>) <span class="cf">if</span> r[<span class="st">&quot;cv_r2&quot;</span>] <span class="kw">is</span> <span class="kw">not</span> <span class="va">None</span> <span class="cf">else</span> <span class="st">&quot;n/a&quot;</span>,</span>
-<span id="cb20-210"><a href="#cb20-210" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test R²&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;r2&quot;</span>], <span class="dv">3</span>),</span>
-<span id="cb20-211"><a href="#cb20-211" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test MAE&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;mae&quot;</span>], <span class="dv">1</span>),</span>
-<span id="cb20-212"><a href="#cb20-212" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test RMSE&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;rmse&quot;</span>], <span class="dv">1</span>),</span>
-<span id="cb20-213"><a href="#cb20-213" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Train R²&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;train_r2&quot;</span>], <span class="dv">3</span>) <span class="cf">if</span> r[<span class="st">&quot;train_r2&quot;</span>] <span class="kw">is</span> <span class="kw">not</span> <span class="va">None</span> <span class="cf">else</span> <span class="st">&quot;n/a&quot;</span>,</span>
-<span id="cb20-214"><a href="#cb20-214" aria-hidden="true" tabindex="-1"></a>        })</span>
-<span id="cb20-215"><a href="#cb20-215" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> pd.DataFrame(out)</span>
-<span id="cb20-216"><a href="#cb20-216" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-217"><a href="#cb20-217" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> clf_table(rows):</span>
-<span id="cb20-218"><a href="#cb20-218" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> [{<span class="st">&quot;Model&quot;</span>: r[<span class="st">&quot;model&quot;</span>], <span class="st">&quot;CV F1&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;cv_f1&quot;</span>], <span class="dv">3</span>),</span>
-<span id="cb20-219"><a href="#cb20-219" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test Acc&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;accuracy&quot;</span>], <span class="dv">3</span>), <span class="st">&quot;Test F1&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;f1&quot;</span>], <span class="dv">3</span>),</span>
-<span id="cb20-220"><a href="#cb20-220" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test ROC-AUC&quot;</span>: (<span class="va">None</span> <span class="cf">if</span> r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;roc_auc&quot;</span>] <span class="kw">is</span> <span class="va">None</span> <span class="cf">else</span> <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;roc_auc&quot;</span>], <span class="dv">3</span>))}</span>
-<span id="cb20-221"><a href="#cb20-221" aria-hidden="true" tabindex="-1"></a>           <span class="cf">for</span> r <span class="kw">in</span> rows <span class="cf">if</span> r[<span class="st">&quot;task&quot;</span>] <span class="op">==</span> <span class="st">&quot;classification&quot;</span>]</span>
-<span id="cb20-222"><a href="#cb20-222" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> pd.DataFrame(out)</span>
-<span id="cb20-223"><a href="#cb20-223" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-224"><a href="#cb20-224" aria-hidden="true" tabindex="-1"></a>reg_table(leaderboard)</span>
-<span id="cb20-225"><a href="#cb20-225" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb20-226"><a href="#cb20-226" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-229"><a href="#cb20-229" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
-<span id="cb20-230"><a href="#cb20-230" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: clf-leaderboard</span></span>
-<span id="cb20-231"><a href="#cb20-231" aria-hidden="true" tabindex="-1"></a>clf_table(leaderboard)</span>
-<span id="cb20-232"><a href="#cb20-232" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb20-233"><a href="#cb20-233" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-234"><a href="#cb20-234" aria-hidden="true" tabindex="-1"></a><span class="fu">## 5a. The key result: CV and the hold-out disagree — and why</span></span>
-<span id="cb20-235"><a href="#cb20-235" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-236"><a href="#cb20-236" aria-hidden="true" tabindex="-1"></a>This is the most important finding in the study, and it is a direct consequence of having</span>
-<span id="cb20-237"><a href="#cb20-237" aria-hidden="true" tabindex="-1"></a>**only one year of data**:</span>
-<span id="cb20-238"><a href="#cb20-238" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-239"><a href="#cb20-239" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>On **TimeSeriesSplit CV**, XGBoost is the best regressor (**CV R² ≈ 0.21**), clearly</span>
-<span id="cb20-240"><a href="#cb20-240" aria-hidden="true" tabindex="-1"></a>  beating the mean baseline (≈ 0).</span>
-<span id="cb20-241"><a href="#cb20-241" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>On the **Nov–Dec hold-out**, the tree models score **near-zero or negative** R².</span>
-<span id="cb20-242"><a href="#cb20-242" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-243"><a href="#cb20-243" aria-hidden="true" tabindex="-1"></a>The reason is **not** that the models are broken — it is that the hold-out months</span>
-<span id="cb20-244"><a href="#cb20-244" aria-hidden="true" tabindex="-1"></a>(November, December) are **calendar positions the model never saw in training** (Jan–Sep).</span>
-<span id="cb20-245"><a href="#cb20-245" aria-hidden="true" tabindex="-1"></a>Tree models cannot extrapolate <span class="in">`month`</span>/<span class="in">`week_of_year`</span> beyond their training range, so they</span>
-<span id="cb20-246"><a href="#cb20-246" aria-hidden="true" tabindex="-1"></a>fail precisely on the unseen tail; linear Ridge, which extrapolates, edges them out on that</span>
-<span id="cb20-247"><a href="#cb20-247" aria-hidden="true" tabindex="-1"></a>specific hold-out. With a single year, *any* future hold-out has this problem. We therefore</span>
-<span id="cb20-248"><a href="#cb20-248" aria-hidden="true" tabindex="-1"></a>**select the deployed model by the CV estimate** (the documented primary metric), giving</span>
-<span id="cb20-249"><a href="#cb20-249" aria-hidden="true" tabindex="-1"></a>**XGBoost** for revenue.</span>
-<span id="cb20-250"><a href="#cb20-250" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-253"><a href="#cb20-253" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
-<span id="cb20-254"><a href="#cb20-254" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: depth-curve</span></span>
-<span id="cb20-255"><a href="#cb20-255" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Decision-tree validation curve. Train R² keeps rising while CV R² peaks early then collapses — textbook overfitting.&quot;</span></span>
-<span id="cb20-256"><a href="#cb20-256" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
-<span id="cb20-257"><a href="#cb20-257" aria-hidden="true" tabindex="-1"></a>dc <span class="op">=</span> artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;depth_curve&quot;</span>]</span>
-<span id="cb20-258"><a href="#cb20-258" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">8</span>, <span class="fl">3.6</span>))</span>
-<span id="cb20-259"><a href="#cb20-259" aria-hidden="true" tabindex="-1"></a>ax.plot(dc[<span class="st">&quot;max_depth&quot;</span>], dc[<span class="st">&quot;train_r2&quot;</span>], marker<span class="op">=</span><span class="st">&quot;o&quot;</span>, label<span class="op">=</span><span class="st">&quot;train R²&quot;</span>)</span>
-<span id="cb20-260"><a href="#cb20-260" aria-hidden="true" tabindex="-1"></a>ax.plot(dc[<span class="st">&quot;max_depth&quot;</span>], dc[<span class="st">&quot;cv_r2&quot;</span>], marker<span class="op">=</span><span class="st">&quot;o&quot;</span>, label<span class="op">=</span><span class="st">&quot;CV R² (TimeSeriesSplit)&quot;</span>)</span>
-<span id="cb20-261"><a href="#cb20-261" aria-hidden="true" tabindex="-1"></a>ax.axhline(<span class="dv">0</span>, color<span class="op">=</span><span class="st">&quot;grey&quot;</span>, lw<span class="op">=</span><span class="fl">0.8</span>, ls<span class="op">=</span><span class="st">&quot;--&quot;</span>)</span>
-<span id="cb20-262"><a href="#cb20-262" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">&quot;max_depth&quot;</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">&quot;R²&quot;</span>)<span class="op">;</span> ax.legend()<span class="op">;</span> ax.grid(alpha<span class="op">=</span><span class="fl">0.3</span>)</span>
-<span id="cb20-263"><a href="#cb20-263" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">&quot;Decision tree: overfitting as depth grows&quot;</span>)</span>
-<span id="cb20-264"><a href="#cb20-264" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span>
-<span id="cb20-265"><a href="#cb20-265" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb20-266"><a href="#cb20-266" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-267"><a href="#cb20-267" aria-hidden="true" tabindex="-1"></a><span class="fu">## 5b. Predicted vs. actual, and the confusion matrix</span></span>
-<span id="cb20-268"><a href="#cb20-268" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-271"><a href="#cb20-271" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
-<span id="cb20-272"><a href="#cb20-272" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: pred-actual</span></span>
-<span id="cb20-273"><a href="#cb20-273" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Best regression model — predicted vs. actual daily revenue on the hold-out.&quot;</span></span>
-<span id="cb20-274"><a href="#cb20-274" aria-hidden="true" tabindex="-1"></a>pva <span class="op">=</span> artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;predicted_vs_actual&quot;</span>]</span>
-<span id="cb20-275"><a href="#cb20-275" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">5</span>))</span>
-<span id="cb20-276"><a href="#cb20-276" aria-hidden="true" tabindex="-1"></a>ax.scatter(pva[<span class="st">&quot;actual&quot;</span>], pva[<span class="st">&quot;predicted&quot;</span>], alpha<span class="op">=</span><span class="fl">0.6</span>, color<span class="op">=</span><span class="st">&quot;#ff4800&quot;</span>)</span>
-<span id="cb20-277"><a href="#cb20-277" aria-hidden="true" tabindex="-1"></a>lim <span class="op">=</span> [<span class="bu">min</span>(pva[<span class="st">&quot;actual&quot;</span>]), <span class="bu">max</span>(pva[<span class="st">&quot;actual&quot;</span>])]</span>
-<span id="cb20-278"><a href="#cb20-278" aria-hidden="true" tabindex="-1"></a>ax.plot(lim, lim, color<span class="op">=</span><span class="st">&quot;grey&quot;</span>, ls<span class="op">=</span><span class="st">&quot;--&quot;</span>)</span>
-<span id="cb20-279"><a href="#cb20-279" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">&quot;Actual ($)&quot;</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">&quot;Predicted ($)&quot;</span>)</span>
-<span id="cb20-280"><a href="#cb20-280" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="ss">f&quot;Regression: </span><span class="sc">{</span>artifacts[<span class="st">&#39;regression&#39;</span>][<span class="st">&#39;best_model&#39;</span>]<span class="sc">}</span><span class="ss"> (hold-out)&quot;</span>)</span>
-<span id="cb20-281"><a href="#cb20-281" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span>
-<span id="cb20-282"><a href="#cb20-282" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb20-283"><a href="#cb20-283" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-286"><a href="#cb20-286" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
-<span id="cb20-287"><a href="#cb20-287" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: confusion</span></span>
-<span id="cb20-288"><a href="#cb20-288" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Best classification model — confusion matrix on the hold-out.&quot;</span></span>
-<span id="cb20-289"><a href="#cb20-289" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
-<span id="cb20-290"><a href="#cb20-290" aria-hidden="true" tabindex="-1"></a>cm <span class="op">=</span> np.array(artifacts[<span class="st">&quot;classification&quot;</span>][<span class="st">&quot;confusion_matrix&quot;</span>])</span>
-<span id="cb20-291"><a href="#cb20-291" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">4.2</span>, <span class="dv">4</span>))</span>
-<span id="cb20-292"><a href="#cb20-292" aria-hidden="true" tabindex="-1"></a>ax.imshow(cm, cmap<span class="op">=</span><span class="st">&quot;Oranges&quot;</span>)</span>
-<span id="cb20-293"><a href="#cb20-293" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i, j), v <span class="kw">in</span> np.ndenumerate(cm):</span>
-<span id="cb20-294"><a href="#cb20-294" aria-hidden="true" tabindex="-1"></a>    ax.text(j, i, <span class="bu">int</span>(v), ha<span class="op">=</span><span class="st">&quot;center&quot;</span>, va<span class="op">=</span><span class="st">&quot;center&quot;</span>, fontsize<span class="op">=</span><span class="dv">13</span>)</span>
-<span id="cb20-295"><a href="#cb20-295" aria-hidden="true" tabindex="-1"></a>ax.set_xticks([<span class="dv">0</span>, <span class="dv">1</span>], [<span class="st">&quot;Pred Normal&quot;</span>, <span class="st">&quot;Pred High&quot;</span>])</span>
-<span id="cb20-296"><a href="#cb20-296" aria-hidden="true" tabindex="-1"></a>ax.set_yticks([<span class="dv">0</span>, <span class="dv">1</span>], [<span class="st">&quot;Actual Normal&quot;</span>, <span class="st">&quot;Actual High&quot;</span>])</span>
-<span id="cb20-297"><a href="#cb20-297" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="ss">f&quot;Classification: </span><span class="sc">{</span>artifacts[<span class="st">&#39;classification&#39;</span>][<span class="st">&#39;best_model&#39;</span>]<span class="sc">}</span><span class="ss">&quot;</span>)</span>
-<span id="cb20-298"><a href="#cb20-298" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span>
-<span id="cb20-299"><a href="#cb20-299" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb20-300"><a href="#cb20-300" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-301"><a href="#cb20-301" aria-hidden="true" tabindex="-1"></a><span class="fu"># 6. Honest evaluation</span></span>
-<span id="cb20-302"><a href="#cb20-302" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-303"><a href="#cb20-303" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Report test performance, keep the baseline.** Every leaderboard row shows hold-out</span>
-<span id="cb20-304"><a href="#cb20-304" aria-hidden="true" tabindex="-1"></a>  metrics with the Dummy baseline retained. We do **not** quote training scores as results.</span>
-<span id="cb20-305"><a href="#cb20-305" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Overfitting is shown, not hidden.** The depth curve makes the train-vs-CV gap explicit;</span>
-<span id="cb20-306"><a href="#cb20-306" aria-hidden="true" tabindex="-1"></a>  the deeper trees memorise the training year and generalise worse.</span>
-<span id="cb20-307"><a href="#cb20-307" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Metric choice matters.** The majority-class classifier scores a deceptively high **F1</span>
-<span id="cb20-308"><a href="#cb20-308" aria-hidden="true" tabindex="-1"></a>  (0.60)** by predicting &quot;high&quot; for every day (perfect recall, no true negatives). Judged by</span>
-<span id="cb20-309"><a href="#cb20-309" aria-hidden="true" tabindex="-1"></a>  **ROC-AUC** — the threshold-independent metric — it sits at **0.50 (random)**, while</span>
-<span id="cb20-310"><a href="#cb20-310" aria-hidden="true" tabindex="-1"></a>  Logistic Regression reaches **0.74**. We therefore select and judge the classifier by AUC,</span>
-<span id="cb20-311"><a href="#cb20-311" aria-hidden="true" tabindex="-1"></a>  not F1.</span>
-<span id="cb20-312"><a href="#cb20-312" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**What we would and would not trust.** The classifier is a **useful &quot;busy day?&quot; signal**</span>
-<span id="cb20-313"><a href="#cb20-313" aria-hidden="true" tabindex="-1"></a>  for staffing (AUC ≈ 0.74 from the calendar alone). The revenue regressor explains only a</span>
-<span id="cb20-314"><a href="#cb20-314" aria-hidden="true" tabindex="-1"></a>  **modest share of daily variance** — daily revenue is noisy, and a single year limits how</span>
-<span id="cb20-315"><a href="#cb20-315" aria-hidden="true" tabindex="-1"></a>  far any model can generalise. We would use it for **rough planning, not financial</span>
-<span id="cb20-316"><a href="#cb20-316" aria-hidden="true" tabindex="-1"></a>  commitments**, and we would retrain as more years of data accrue.</span>
-<span id="cb20-317"><a href="#cb20-317" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**A feature we tried that did *not* help (reported, not hidden).** We added a leakage-safe</span>
-<span id="cb20-318"><a href="#cb20-318" aria-hidden="true" tabindex="-1"></a>  US-holiday and payday calendar (the <span class="in">`XGBoost (+holidays)`</span> row above). It moved cross-validated</span>
-<span id="cb20-319"><a href="#cb20-319" aria-hidden="true" tabindex="-1"></a>  R² only from 0.212 to 0.214 — noise — and was *worse* on the hold-out. The reason is concrete:</span>
-<span id="cb20-320"><a href="#cb20-320" aria-hidden="true" tabindex="-1"></a>  this restaurant&#39;s closed days (four October Mondays, two September days) don&#39;t line up with</span>
-<span id="cb20-321"><a href="#cb20-321" aria-hidden="true" tabindex="-1"></a>  public holidays — only 25 December does — so a holiday flag has almost nothing to predict</span>
-<span id="cb20-322"><a href="#cb20-322" aria-hidden="true" tabindex="-1"></a>  here. We kept the negative result and **did not deploy it**; a calendar of *this venue&#39;s own*</span>
-<span id="cb20-323"><a href="#cb20-323" aria-hidden="true" tabindex="-1"></a>  closures would be the useful version, which again points back to needing more of its data.</span>
-<span id="cb20-324"><a href="#cb20-324" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**A time-series paradigm comparison: SARIMA.** At the course instructor&#39;s suggestion, we</span>
-<span id="cb20-325"><a href="#cb20-325" aria-hidden="true" tabindex="-1"></a>  added a classical **SARIMA(p,d,q)(P,D,Q)[7]** model as a fifth regression comparison row</span>
-<span id="cb20-326"><a href="#cb20-326" aria-hidden="true" tabindex="-1"></a>  (auto-selected via <span class="in">`pmdarima.auto_arima`</span>, seasonal period m = 7 for the weekly cycle).</span>
-<span id="cb20-327"><a href="#cb20-327" aria-hidden="true" tabindex="-1"></a>  SARIMA explicitly models autocorrelation and weekly seasonality — the same weekly pattern</span>
-<span id="cb20-328"><a href="#cb20-328" aria-hidden="true" tabindex="-1"></a>  that XGBoost approximates via cyclical day-of-week encoding. The model was fitted on the</span>
-<span id="cb20-329"><a href="#cb20-329" aria-hidden="true" tabindex="-1"></a>  training series (Jan–Sep only) and generated a **pure out-of-sample 92-day forecast** evaluated</span>
-<span id="cb20-330"><a href="#cb20-330" aria-hidden="true" tabindex="-1"></a>  on the same Nov–Dec hold-out as every other model. No future data entered the fit.</span>
-<span id="cb20-331"><a href="#cb20-331" aria-hidden="true" tabindex="-1"></a>  Result: **test R² = −0.005 — essentially tied with the Dummy baseline.** This is the</span>
-<span id="cb20-332"><a href="#cb20-332" aria-hidden="true" tabindex="-1"></a>  expected outcome for a 92-day ARIMA horizon trained on a single year: error accumulates over</span>
-<span id="cb20-333"><a href="#cb20-333" aria-hidden="true" tabindex="-1"></a>  long forecast windows, and 52 weekly cycles is insufficient for robust seasonal parameter</span>
-<span id="cb20-334"><a href="#cb20-334" aria-hidden="true" tabindex="-1"></a>  estimation. The finding confirms that the cyclical encoding in XGBoost extracts as much</span>
-<span id="cb20-335"><a href="#cb20-335" aria-hidden="true" tabindex="-1"></a>  predictive signal from this dataset as a classical time-series model — and with the decisive</span>
-<span id="cb20-336"><a href="#cb20-336" aria-hidden="true" tabindex="-1"></a>  advantage of being deployable from a bare date, which ARIMA (requiring the observed series</span>
-<span id="cb20-337"><a href="#cb20-337" aria-hidden="true" tabindex="-1"></a>  at inference time) cannot match. SARIMA is included as a **report-only** comparison row; it</span>
-<span id="cb20-338"><a href="#cb20-338" aria-hidden="true" tabindex="-1"></a>  does not affect model selection or the live predictor.</span>
-<span id="cb20-339"><a href="#cb20-339" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-340"><a href="#cb20-340" aria-hidden="true" tabindex="-1"></a><span class="fu">## Would more data help? A learning curve</span></span>
-<span id="cb20-341"><a href="#cb20-341" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-344"><a href="#cb20-344" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
-<span id="cb20-345"><a href="#cb20-345" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-learning</span></span>
-<span id="cb20-346"><a href="#cb20-346" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;XGBoost learning curve (TimeSeriesSplit). Train R² sits well above CV R² at every training size — a wide, persistent gap that does not close within one year of data.&quot;</span></span>
-<span id="cb20-347"><a href="#cb20-347" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
-<span id="cb20-348"><a href="#cb20-348" aria-hidden="true" tabindex="-1"></a>lc <span class="op">=</span> artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;learning_curve&quot;</span>]</span>
-<span id="cb20-349"><a href="#cb20-349" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">8</span>, <span class="fl">3.6</span>))</span>
-<span id="cb20-350"><a href="#cb20-350" aria-hidden="true" tabindex="-1"></a>ax.plot(lc[<span class="st">&quot;train_sizes&quot;</span>], lc[<span class="st">&quot;train_r2&quot;</span>], marker<span class="op">=</span><span class="st">&quot;o&quot;</span>, label<span class="op">=</span><span class="st">&quot;train R²&quot;</span>)</span>
-<span id="cb20-351"><a href="#cb20-351" aria-hidden="true" tabindex="-1"></a>ax.plot(lc[<span class="st">&quot;train_sizes&quot;</span>], lc[<span class="st">&quot;cv_r2&quot;</span>], marker<span class="op">=</span><span class="st">&quot;o&quot;</span>, label<span class="op">=</span><span class="st">&quot;CV R² (TimeSeriesSplit)&quot;</span>)</span>
-<span id="cb20-352"><a href="#cb20-352" aria-hidden="true" tabindex="-1"></a>ax.axhline(<span class="dv">0</span>, color<span class="op">=</span><span class="st">&quot;grey&quot;</span>, lw<span class="op">=</span><span class="fl">0.8</span>, ls<span class="op">=</span><span class="st">&quot;--&quot;</span>)</span>
-<span id="cb20-353"><a href="#cb20-353" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">&quot;training days used (per CV fold)&quot;</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">&quot;R²&quot;</span>)<span class="op">;</span> ax.legend()<span class="op">;</span> ax.grid(alpha<span class="op">=</span><span class="fl">0.3</span>)</span>
-<span id="cb20-354"><a href="#cb20-354" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">&quot;XGBoost — learning curve&quot;</span>)</span>
-<span id="cb20-355"><a href="#cb20-355" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span>
-<span id="cb20-356"><a href="#cb20-356" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb20-357"><a href="#cb20-357" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-358"><a href="#cb20-358" aria-hidden="true" tabindex="-1"></a>The train score stays well above the cross-validated score at **every** training size — a</span>
-<span id="cb20-359"><a href="#cb20-359" aria-hidden="true" tabindex="-1"></a>persistent gap of roughly 0.3–0.4 that the available data never closes, with CV R² holding in</span>
-<span id="cb20-360"><a href="#cb20-360" aria-hidden="true" tabindex="-1"></a>a modest, noisy band around 0.15. That wide, stubborn train–CV gap is the textbook signature of</span>
-<span id="cb20-361"><a href="#cb20-361" aria-hidden="true" tabindex="-1"></a>a **high-variance, data-limited** model: it has the capacity to fit, but not enough history to</span>
-<span id="cb20-362"><a href="#cb20-362" aria-hidden="true" tabindex="-1"></a>generalise. (The x-axis is short because TimeSeriesSplit&#39;s early folds train on few days; even</span>
-<span id="cb20-363"><a href="#cb20-363" aria-hidden="true" tabindex="-1"></a>so, the gap never narrows.) This is the honest, evidence-backed version of the</span>
-<span id="cb20-364"><a href="#cb20-364" aria-hidden="true" tabindex="-1"></a>&quot;invest in more data&quot; recommendation — more than a fancier model, more *history* is what would</span>
-<span id="cb20-365"><a href="#cb20-365" aria-hidden="true" tabindex="-1"></a>move the revenue forecast.</span>
-<span id="cb20-366"><a href="#cb20-366" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-367"><a href="#cb20-367" aria-hidden="true" tabindex="-1"></a><span class="fu"># 7. Business interpretation</span></span>
-<span id="cb20-368"><a href="#cb20-368" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-369"><a href="#cb20-369" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Weekends and Fridays are the demand peaks** — the weekly pattern is the strongest,</span>
-<span id="cb20-370"><a href="#cb20-370" aria-hidden="true" tabindex="-1"></a>  most reliable signal. Staff and stock to it.</span>
-<span id="cb20-371"><a href="#cb20-371" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**A simple calendar model already flags busy days** well enough to inform shift planning</span>
-<span id="cb20-372"><a href="#cb20-372" aria-hidden="true" tabindex="-1"></a>  (AUC ≈ 0.74), with no point-of-sale integration required.</span>
-<span id="cb20-373"><a href="#cb20-373" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Revenue forecasting needs more than the calendar.** Promotions, weather, and local</span>
-<span id="cb20-374"><a href="#cb20-374" aria-hidden="true" tabindex="-1"></a>  events likely drive the unexplained variance; capturing them is the clear next step.</span>
-<span id="cb20-375"><a href="#cb20-375" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**More history is the highest-value investment.** The single-year limitation — not the</span>
-<span id="cb20-376"><a href="#cb20-376" aria-hidden="true" tabindex="-1"></a>  model choice — is what caps accuracy here.</span>
-<span id="cb20-377"><a href="#cb20-377" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-378"><a href="#cb20-378" aria-hidden="true" tabindex="-1"></a><span class="fu">## Which features matter? (permutation importance)</span></span>
-<span id="cb20-379"><a href="#cb20-379" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-382"><a href="#cb20-382" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
-<span id="cb20-383"><a href="#cb20-383" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-importance</span></span>
-<span id="cb20-384"><a href="#cb20-384" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Permutation importance on the hold-out set — how much each feature actually moves the prediction. Confirms the weekly rhythm (weekend / day-of-week) is the dominant driver for both tasks.&quot;</span></span>
-<span id="cb20-385"><a href="#cb20-385" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
-<span id="cb20-386"><a href="#cb20-386" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-387"><a href="#cb20-387" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> _imp_ax(ax, ranked, title, color):</span>
-<span id="cb20-388"><a href="#cb20-388" aria-hidden="true" tabindex="-1"></a>    top <span class="op">=</span> ranked[:<span class="dv">8</span>][::<span class="op">-</span><span class="dv">1</span>]</span>
-<span id="cb20-389"><a href="#cb20-389" aria-hidden="true" tabindex="-1"></a>    ax.barh([d[<span class="st">&quot;feature&quot;</span>] <span class="cf">for</span> d <span class="kw">in</span> top], [d[<span class="st">&quot;importance&quot;</span>] <span class="cf">for</span> d <span class="kw">in</span> top], color<span class="op">=</span>color)</span>
-<span id="cb20-390"><a href="#cb20-390" aria-hidden="true" tabindex="-1"></a>    ax.set_title(title, fontsize<span class="op">=</span><span class="dv">11</span>)<span class="op">;</span> ax.tick_params(labelsize<span class="op">=</span><span class="dv">8</span>)</span>
-<span id="cb20-391"><a href="#cb20-391" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-392"><a href="#cb20-392" aria-hidden="true" tabindex="-1"></a>fig, axes <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="fl">3.8</span>))</span>
-<span id="cb20-393"><a href="#cb20-393" aria-hidden="true" tabindex="-1"></a>_imp_ax(axes[<span class="dv">0</span>], artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;permutation_importance&quot;</span>],</span>
-<span id="cb20-394"><a href="#cb20-394" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f&quot;Revenue — </span><span class="sc">{</span>artifacts[<span class="st">&#39;regression&#39;</span>][<span class="st">&#39;best_model&#39;</span>]<span class="sc">}</span><span class="ss">&quot;</span>, <span class="st">&quot;#ff4800&quot;</span>)</span>
-<span id="cb20-395"><a href="#cb20-395" aria-hidden="true" tabindex="-1"></a>_imp_ax(axes[<span class="dv">1</span>], artifacts[<span class="st">&quot;classification&quot;</span>][<span class="st">&quot;permutation_importance&quot;</span>],</span>
-<span id="cb20-396"><a href="#cb20-396" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f&quot;High-demand — </span><span class="sc">{</span>artifacts[<span class="st">&#39;classification&#39;</span>][<span class="st">&#39;best_model&#39;</span>]<span class="sc">}</span><span class="ss">&quot;</span>, <span class="st">&quot;#2360c4&quot;</span>)</span>
-<span id="cb20-397"><a href="#cb20-397" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()</span>
-<span id="cb20-398"><a href="#cb20-398" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span>
-<span id="cb20-399"><a href="#cb20-399" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb20-400"><a href="#cb20-400" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-401"><a href="#cb20-401" aria-hidden="true" tabindex="-1"></a>The features that most move the predictions are the **weekend flag and the day-of-week</span>
-<span id="cb20-402"><a href="#cb20-402" aria-hidden="true" tabindex="-1"></a>encodings** — direct evidence for the headline claim that *the weekly rhythm is the strongest,</span>
-<span id="cb20-403"><a href="#cb20-403" aria-hidden="true" tabindex="-1"></a>most reliable signal*. (Permutation importance is computed on the hold-out set and is</span>
-<span id="cb20-404"><a href="#cb20-404" aria-hidden="true" tabindex="-1"></a>report-only; it does not influence model selection or the deployed models.)</span>
-<span id="cb20-405"><a href="#cb20-405" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-406"><a href="#cb20-406" aria-hidden="true" tabindex="-1"></a>---</span>
-<span id="cb20-407"><a href="#cb20-407" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-408"><a href="#cb20-408" aria-hidden="true" tabindex="-1"></a>*Reproducibility: every figure and number above is produced by executed code in this</span>
-<span id="cb20-409"><a href="#cb20-409" aria-hidden="true" tabindex="-1"></a>document, from the committed data and the seeded (<span class="in">`RANDOM_SEED = 42`</span>) pipeline in <span class="in">`src/`</span>.</span>
-<span id="cb20-410"><a href="#cb20-410" aria-hidden="true" tabindex="-1"></a>Run <span class="in">`quarto render report.qmd`</span> from a clean checkout to regenerate.*</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24" data-shortcodes="false"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="an">title:</span><span class="co"> &quot;Restaurant Demand Analytics: Predicting Daily Revenue and High-Demand Days&quot;</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="an">subtitle:</span><span class="co"> &quot;IMB MADA 2026 — End-to-End Machine Learning Capstone&quot;</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="an">author:</span><span class="co"> &quot;Aleksandar Popovski&quot;</span></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a><span class="an">date:</span><span class="co"> 2026-06-27</span></span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a><span class="an">format:</span></span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a><span class="co">  html:</span></span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a><span class="co">    toc: true</span></span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a><span class="co">    toc-depth: 3</span></span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a><span class="co">    code-fold: true</span></span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a><span class="co">    code-tools: true</span></span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a><span class="co">    theme: cosmo</span></span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a><span class="co">    embed-resources: true</span></span>
+<span id="cb24-14"><a href="#cb24-14" aria-hidden="true" tabindex="-1"></a><span class="co">    fig-width: 8</span></span>
+<span id="cb24-15"><a href="#cb24-15" aria-hidden="true" tabindex="-1"></a><span class="co">    fig-height: 4</span></span>
+<span id="cb24-16"><a href="#cb24-16" aria-hidden="true" tabindex="-1"></a><span class="an">jupyter:</span><span class="co"> python3</span></span>
+<span id="cb24-17"><a href="#cb24-17" aria-hidden="true" tabindex="-1"></a><span class="an">execute:</span></span>
+<span id="cb24-18"><a href="#cb24-18" aria-hidden="true" tabindex="-1"></a><span class="co">  warning: false</span></span>
+<span id="cb24-19"><a href="#cb24-19" aria-hidden="true" tabindex="-1"></a><span class="co">  echo: true</span></span>
+<span id="cb24-20"><a href="#cb24-20" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb24-21"><a href="#cb24-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-24"><a href="#cb24-24" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb24-25"><a href="#cb24-25" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: setup</span></span>
+<span id="cb24-26"><a href="#cb24-26" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
+<span id="cb24-27"><a href="#cb24-27" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> json</span>
+<span id="cb24-28"><a href="#cb24-28" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
+<span id="cb24-29"><a href="#cb24-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-30"><a href="#cb24-30" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb24-31"><a href="#cb24-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-32"><a href="#cb24-32" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> src.data <span class="im">import</span> build_daily</span>
+<span id="cb24-33"><a href="#cb24-33" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> src.eda <span class="im">import</span> (chart_data, fig_correlation_heatmap, fig_heatmap, fig_revenue_by_dow,</span>
+<span id="cb24-34"><a href="#cb24-34" aria-hidden="true" tabindex="-1"></a>                     fig_revenue_by_month, fig_revenue_distribution, summary_stats)</span>
+<span id="cb24-35"><a href="#cb24-35" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> src.features <span class="im">import</span> build_features</span>
+<span id="cb24-36"><a href="#cb24-36" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> src <span class="im">import</span> augment</span>
+<span id="cb24-37"><a href="#cb24-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-38"><a href="#cb24-38" aria-hidden="true" tabindex="-1"></a>MODELS <span class="op">=</span> Path(<span class="st">&quot;models&quot;</span>)</span>
+<span id="cb24-39"><a href="#cb24-39" aria-hidden="true" tabindex="-1"></a>leaderboard <span class="op">=</span> json.loads((MODELS <span class="op">/</span> <span class="st">&quot;leaderboard.json&quot;</span>).read_text())</span>
+<span id="cb24-40"><a href="#cb24-40" aria-hidden="true" tabindex="-1"></a>artifacts <span class="op">=</span> json.loads((MODELS <span class="op">/</span> <span class="st">&quot;report_artifacts.json&quot;</span>).read_text())</span>
+<span id="cb24-41"><a href="#cb24-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-42"><a href="#cb24-42" aria-hidden="true" tabindex="-1"></a>daily <span class="op">=</span> build_daily()</span>
+<span id="cb24-43"><a href="#cb24-43" aria-hidden="true" tabindex="-1"></a>features <span class="op">=</span> build_features(daily)</span>
+<span id="cb24-44"><a href="#cb24-44" aria-hidden="true" tabindex="-1"></a>summary <span class="op">=</span> summary_stats(daily)</span>
+<span id="cb24-45"><a href="#cb24-45" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb24-46"><a href="#cb24-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-47"><a href="#cb24-47" aria-hidden="true" tabindex="-1"></a><span class="fu"># 1. The question</span></span>
+<span id="cb24-48"><a href="#cb24-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-49"><a href="#cb24-49" aria-hidden="true" tabindex="-1"></a>A pizza restaurant wants to plan **staffing, inventory, and purchasing** ahead of demand.</span>
+<span id="cb24-50"><a href="#cb24-50" aria-hidden="true" tabindex="-1"></a>Two operational questions drive this study, using one full year (2015) of order data:</span>
+<span id="cb24-51"><a href="#cb24-51" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-52"><a href="#cb24-52" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Regression — how much will we take today?** Predict <span class="in">`Daily_Revenue`</span>, the sum of</span>
+<span id="cb24-53"><a href="#cb24-53" aria-hidden="true" tabindex="-1"></a>  <span class="in">`price × quantity`</span> across all of a day&#39;s orders.</span>
+<span id="cb24-54"><a href="#cb24-54" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Classification — will today be busy?** Predict <span class="in">`High_Demand_Day`</span>: a day whose order</span>
+<span id="cb24-55"><a href="#cb24-55" aria-hidden="true" tabindex="-1"></a>  count exceeds the year&#39;s mean daily order count.</span>
+<span id="cb24-56"><a href="#cb24-56" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-57"><a href="#cb24-57" aria-hidden="true" tabindex="-1"></a>Both targets are aggregated to **one row per calendar day**, and both models use **only</span>
+<span id="cb24-58"><a href="#cb24-58" aria-hidden="true" tabindex="-1"></a>features derived from the date** — so a prediction can be made for any future day with no</span>
+<span id="cb24-59"><a href="#cb24-59" aria-hidden="true" tabindex="-1"></a>other information.</span>
+<span id="cb24-60"><a href="#cb24-60" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-61"><a href="#cb24-61" aria-hidden="true" tabindex="-1"></a><span class="fu"># 2. The data</span></span>
+<span id="cb24-62"><a href="#cb24-62" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-63"><a href="#cb24-63" aria-hidden="true" tabindex="-1"></a>The <span class="co">[</span><span class="ot">Maven Pizza Place Sales</span><span class="co">](https://mavenanalytics.io/data-playground/pizza-place-sales)</span></span>
+<span id="cb24-64"><a href="#cb24-64" aria-hidden="true" tabindex="-1"></a>dataset is four linked tables: <span class="in">`orders`</span>, <span class="in">`order_details`</span>, <span class="in">`pizzas`</span>, and <span class="in">`pizza_types`</span></span>
+<span id="cb24-65"><a href="#cb24-65" aria-hidden="true" tabindex="-1"></a>(~48,620 line items across ~21,350 orders). We join them, compute line revenue, and</span>
+<span id="cb24-66"><a href="#cb24-66" aria-hidden="true" tabindex="-1"></a>aggregate to a daily series.</span>
+<span id="cb24-67"><a href="#cb24-67" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-70"><a href="#cb24-70" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb24-71"><a href="#cb24-71" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: data-overview</span></span>
+<span id="cb24-72"><a href="#cb24-72" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f&quot;Calendar days (2015):       </span><span class="sc">{</span>summary[<span class="st">&#39;n_days&#39;</span>]<span class="sc">}</span><span class="ss">&quot;</span>)</span>
+<span id="cb24-73"><a href="#cb24-73" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f&quot;Closed (zero-order) days:   </span><span class="sc">{</span>summary[<span class="st">&#39;closed_days&#39;</span>]<span class="sc">}</span><span class="ss">&quot;</span>)</span>
+<span id="cb24-74"><a href="#cb24-74" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f&quot;Total revenue:              $</span><span class="sc">{</span>summary[<span class="st">&#39;total_revenue&#39;</span>]<span class="sc">:,.0f}</span><span class="ss">&quot;</span>)</span>
+<span id="cb24-75"><a href="#cb24-75" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f&quot;Mean daily revenue:         $</span><span class="sc">{</span>summary[<span class="st">&#39;mean_daily_revenue&#39;</span>]<span class="sc">:,.0f}</span><span class="ss">&quot;</span>)</span>
+<span id="cb24-76"><a href="#cb24-76" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f&quot;Mean daily orders:          </span><span class="sc">{</span>summary[<span class="st">&#39;mean_daily_orders&#39;</span>]<span class="sc">:.1f}</span><span class="ss">&quot;</span>)</span>
+<span id="cb24-77"><a href="#cb24-77" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f&quot;High-demand days (share):   </span><span class="sc">{</span>summary[<span class="st">&#39;high_demand_share&#39;</span>]<span class="sc">:.1%}</span><span class="ss">&quot;</span>)</span>
+<span id="cb24-78"><a href="#cb24-78" aria-hidden="true" tabindex="-1"></a>daily.head()</span>
+<span id="cb24-79"><a href="#cb24-79" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb24-80"><a href="#cb24-80" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-81"><a href="#cb24-81" aria-hidden="true" tabindex="-1"></a>**Two data-cleaning decisions worth flagging (honest data handling):**</span>
+<span id="cb24-82"><a href="#cb24-82" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-83"><a href="#cb24-83" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>**Encoding.** `pizza_types.csv` ships as **Windows-1252**, not UTF-8 (curly</span>
+<span id="cb24-84"><a href="#cb24-84" aria-hidden="true" tabindex="-1"></a>   apostrophes in ingredient names such as *&#39;Nduja*). Reading it as UTF-8 raises a</span>
+<span id="cb24-85"><a href="#cb24-85" aria-hidden="true" tabindex="-1"></a>   <span class="in">`UnicodeDecodeError`</span>; we read it with the correct <span class="in">`cp1252`</span> encoding.</span>
+<span id="cb24-86"><a href="#cb24-86" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>**Closed days.** Seven 2015 dates have **zero orders** — including 25 December</span>
+<span id="cb24-87"><a href="#cb24-87" aria-hidden="true" tabindex="-1"></a>   (Christmas) and four consecutive October Mondays. We reindex the series to the full</span>
+<span id="cb24-88"><a href="#cb24-88" aria-hidden="true" tabindex="-1"></a>   calendar and treat these as genuine zero-revenue closed days rather than dropping them,</span>
+<span id="cb24-89"><a href="#cb24-89" aria-hidden="true" tabindex="-1"></a>   so the daily index stays contiguous (required by the lag features below). The October</span>
+<span id="cb24-90"><a href="#cb24-90" aria-hidden="true" tabindex="-1"></a>   Monday pattern is flagged as a possible data-collection gap rather than a confirmed</span>
+<span id="cb24-91"><a href="#cb24-91" aria-hidden="true" tabindex="-1"></a>   closure.</span>
+<span id="cb24-92"><a href="#cb24-92" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-93"><a href="#cb24-93" aria-hidden="true" tabindex="-1"></a><span class="fu"># 3. Exploratory analysis</span></span>
+<span id="cb24-94"><a href="#cb24-94" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-95"><a href="#cb24-95" aria-hidden="true" tabindex="-1"></a>Daily revenue is driven mostly by **day-of-week** and **seasonal** structure.</span>
+<span id="cb24-96"><a href="#cb24-96" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-99"><a href="#cb24-99" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb24-100"><a href="#cb24-100" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-month</span></span>
+<span id="cb24-101"><a href="#cb24-101" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Mean daily revenue by month — a mild seasonal rise into the summer and year-end.&quot;</span></span>
+<span id="cb24-102"><a href="#cb24-102" aria-hidden="true" tabindex="-1"></a>fig_revenue_by_month(daily)<span class="op">;</span></span>
+<span id="cb24-103"><a href="#cb24-103" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb24-104"><a href="#cb24-104" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-107"><a href="#cb24-107" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb24-108"><a href="#cb24-108" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-dow</span></span>
+<span id="cb24-109"><a href="#cb24-109" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Mean daily revenue by day of week — weekends (and Fridays) run higher.&quot;</span></span>
+<span id="cb24-110"><a href="#cb24-110" aria-hidden="true" tabindex="-1"></a>fig_revenue_by_dow(daily)<span class="op">;</span></span>
+<span id="cb24-111"><a href="#cb24-111" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb24-112"><a href="#cb24-112" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-115"><a href="#cb24-115" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb24-116"><a href="#cb24-116" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-heatmap</span></span>
+<span id="cb24-117"><a href="#cb24-117" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Day-of-week x month heatmap — the weekly rhythm is stable across the year.&quot;</span></span>
+<span id="cb24-118"><a href="#cb24-118" aria-hidden="true" tabindex="-1"></a>fig_heatmap(daily)<span class="op">;</span></span>
+<span id="cb24-119"><a href="#cb24-119" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb24-120"><a href="#cb24-120" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-123"><a href="#cb24-123" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb24-124"><a href="#cb24-124" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-dist</span></span>
+<span id="cb24-125"><a href="#cb24-125" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Distribution of daily revenue. The spike near zero is the closed days.&quot;</span></span>
+<span id="cb24-126"><a href="#cb24-126" aria-hidden="true" tabindex="-1"></a>fig_revenue_distribution(daily)<span class="op">;</span></span>
+<span id="cb24-127"><a href="#cb24-127" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb24-128"><a href="#cb24-128" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-129"><a href="#cb24-129" aria-hidden="true" tabindex="-1"></a><span class="fu">### Correlation study</span></span>
+<span id="cb24-130"><a href="#cb24-130" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-133"><a href="#cb24-133" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb24-134"><a href="#cb24-134" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-corr</span></span>
+<span id="cb24-135"><a href="#cb24-135" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Correlation between modelling features and both targets. The day-of-week / weekend block shows the strongest association with revenue; sin/cos encodings are by design highly collinear with their raw counterparts.&quot;</span></span>
+<span id="cb24-136"><a href="#cb24-136" aria-hidden="true" tabindex="-1"></a>fig_correlation_heatmap(features)<span class="op">;</span></span>
+<span id="cb24-137"><a href="#cb24-137" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb24-138"><a href="#cb24-138" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-139"><a href="#cb24-139" aria-hidden="true" tabindex="-1"></a>The correlation study confirms the EDA: **<span class="in">`is_weekend`</span> and the day-of-week encodings carry</span>
+<span id="cb24-140"><a href="#cb24-140" aria-hidden="true" tabindex="-1"></a>the strongest linear association with daily revenue and with high-demand days**, while month/</span>
+<span id="cb24-141"><a href="#cb24-141" aria-hidden="true" tabindex="-1"></a>seasonal terms are weaker. It also shows each cyclical <span class="in">`sin_*/cos_*`</span> feature is highly</span>
+<span id="cb24-142"><a href="#cb24-142" aria-hidden="true" tabindex="-1"></a>correlated with its raw calendar counterpart (e.g. <span class="in">`sin_dow`</span> with <span class="in">`day_of_week`</span>) — that</span>
+<span id="cb24-143"><a href="#cb24-143" aria-hidden="true" tabindex="-1"></a>redundancy is exactly why the pipeline runs a correlation/collinearity filter inside</span>
+<span id="cb24-144"><a href="#cb24-144" aria-hidden="true" tabindex="-1"></a><span class="in">`select_features`</span> before fitting, so the models aren&#39;t fed three copies of the same signal.</span>
+<span id="cb24-145"><a href="#cb24-145" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-146"><a href="#cb24-146" aria-hidden="true" tabindex="-1"></a><span class="fu">## 3a. Synthetic enrichment (clearly labelled — not used for modelling)</span></span>
+<span id="cb24-147"><a href="#cb24-147" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-148"><a href="#cb24-148" aria-hidden="true" tabindex="-1"></a><span class="at">&gt; **Synthetic data.** The raw dataset has no customer, table, or server identifiers.</span></span>
+<span id="cb24-149"><a href="#cb24-149" aria-hidden="true" tabindex="-1"></a><span class="at">&gt; With the professor&#39;s approval, we generate them to illustrate the kind of analytics a</span></span>
+<span id="cb24-150"><a href="#cb24-150" aria-hidden="true" tabindex="-1"></a><span class="at">&gt; real restaurant dashboard would show. **None of this synthetic data enters model</span></span>
+<span id="cb24-151"><a href="#cb24-151" aria-hidden="true" tabindex="-1"></a><span class="at">&gt; training** — the two models are fit solely on the real date-derived features.</span></span>
+<span id="cb24-152"><a href="#cb24-152" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-155"><a href="#cb24-155" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb24-156"><a href="#cb24-156" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: synthetic-eda</span></span>
+<span id="cb24-157"><a href="#cb24-157" aria-hidden="true" tabindex="-1"></a>aug <span class="op">=</span> augment.augment_orders()</span>
+<span id="cb24-158"><a href="#cb24-158" aria-hidden="true" tabindex="-1"></a>freq <span class="op">=</span> augment.customer_frequency(aug)</span>
+<span id="cb24-159"><a href="#cb24-159" aria-hidden="true" tabindex="-1"></a>util <span class="op">=</span> augment.table_utilization(aug)</span>
+<span id="cb24-160"><a href="#cb24-160" aria-hidden="true" tabindex="-1"></a>thru <span class="op">=</span> augment.server_throughput(aug)</span>
+<span id="cb24-161"><a href="#cb24-161" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">&quot;Customer base (synthetic):&quot;</span>)</span>
+<span id="cb24-162"><a href="#cb24-162" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(freq.to_string(index<span class="op">=</span><span class="va">False</span>))</span>
+<span id="cb24-163"><a href="#cb24-163" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">&quot;</span><span class="ch">\n</span><span class="st">Orders per server (synthetic, shift-constrained):&quot;</span>)</span>
+<span id="cb24-164"><a href="#cb24-164" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(thru.to_string(index<span class="op">=</span><span class="va">False</span>))</span>
+<span id="cb24-165"><a href="#cb24-165" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb24-166"><a href="#cb24-166" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-167"><a href="#cb24-167" aria-hidden="true" tabindex="-1"></a><span class="fu"># 4. Feature engineering (leakage-safe)</span></span>
+<span id="cb24-168"><a href="#cb24-168" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-169"><a href="#cb24-169" aria-hidden="true" tabindex="-1"></a>Two feature sets are built from the date (<span class="in">`src/features.py`</span>):</span>
+<span id="cb24-170"><a href="#cb24-170" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-171"><a href="#cb24-171" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Served set** — calendar parts (<span class="in">`day_of_week`</span>, <span class="in">`month`</span>, <span class="in">`week_of_year`</span>, <span class="in">`day_of_year`</span>,</span>
+<span id="cb24-172"><a href="#cb24-172" aria-hidden="true" tabindex="-1"></a>  <span class="in">`quarter`</span>), boolean flags (<span class="in">`is_weekend`</span>, <span class="in">`is_month_start`</span>, <span class="in">`is_month_end`</span>), and</span>
+<span id="cb24-173"><a href="#cb24-173" aria-hidden="true" tabindex="-1"></a>  **cyclical** <span class="in">`sin/cos`</span> encodings of weekday and month (so December sits next to January).</span>
+<span id="cb24-174"><a href="#cb24-174" aria-hidden="true" tabindex="-1"></a>  These are fully determined by the date, so the deployed API can compute them for any day.</span>
+<span id="cb24-175"><a href="#cb24-175" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Full set** — adds **past-only** lag/rolling features (<span class="in">`revenue_lag_1`</span>, <span class="in">`revenue_lag_7`</span>,</span>
+<span id="cb24-176"><a href="#cb24-176" aria-hidden="true" tabindex="-1"></a>  <span class="in">`rolling_revenue_7d`</span>, …). Each uses <span class="in">`shift`</span>, and the rolling mean uses <span class="in">`shift(1)`</span> first so</span>
+<span id="cb24-177"><a href="#cb24-177" aria-hidden="true" tabindex="-1"></a>  **today never leaks into its own feature**. Used only for an offline comparison, since a</span>
+<span id="cb24-178"><a href="#cb24-178" aria-hidden="true" tabindex="-1"></a>  date-only predictor has no &quot;yesterday&quot; at serve time.</span>
+<span id="cb24-179"><a href="#cb24-179" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-180"><a href="#cb24-180" aria-hidden="true" tabindex="-1"></a>**Leakage controls.** Scalers and the feature selector are fit **inside the training split</span>
+<span id="cb24-181"><a href="#cb24-181" aria-hidden="true" tabindex="-1"></a>only** (sklearn <span class="in">`Pipeline`</span>), and the data is split **chronologically** — never shuffled.</span>
+<span id="cb24-182"><a href="#cb24-182" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-185"><a href="#cb24-185" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb24-186"><a href="#cb24-186" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: split</span></span>
+<span id="cb24-187"><a href="#cb24-187" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">&quot;Selected regression features:&quot;</span>, artifacts[<span class="st">&quot;selected_features&quot;</span>][<span class="st">&quot;regression&quot;</span>])</span>
+<span id="cb24-188"><a href="#cb24-188" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">&quot;Selected classification features:&quot;</span>, artifacts[<span class="st">&quot;selected_features&quot;</span>][<span class="st">&quot;classification&quot;</span>])</span>
+<span id="cb24-189"><a href="#cb24-189" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">&quot;</span><span class="ch">\n</span><span class="st">Split: train = Jan–Sep, validation = Oct, test = Nov–Dec (time-ordered).&quot;</span>)</span>
+<span id="cb24-190"><a href="#cb24-190" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb24-191"><a href="#cb24-191" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-192"><a href="#cb24-192" aria-hidden="true" tabindex="-1"></a><span class="fu"># 5. Models and the honest leaderboard</span></span>
+<span id="cb24-193"><a href="#cb24-193" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-194"><a href="#cb24-194" aria-hidden="true" tabindex="-1"></a>Each task trains a full ladder — **Dummy → linear → Decision Tree → tuned XGBoost** — with</span>
+<span id="cb24-195"><a href="#cb24-195" aria-hidden="true" tabindex="-1"></a>XGBoost tuned by <span class="in">`RandomizedSearchCV`</span> over a **`TimeSeriesSplit`** (so tuning never sees the</span>
+<span id="cb24-196"><a href="#cb24-196" aria-hidden="true" tabindex="-1"></a>future). We report **two** numbers per model: the **TimeSeriesSplit CV** score (the fairer</span>
+<span id="cb24-197"><a href="#cb24-197" aria-hidden="true" tabindex="-1"></a>estimate) and the **Nov–Dec hold-out** score.</span>
+<span id="cb24-198"><a href="#cb24-198" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-201"><a href="#cb24-201" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb24-202"><a href="#cb24-202" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: leaderboard-tables</span></span>
+<span id="cb24-203"><a href="#cb24-203" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
+<span id="cb24-204"><a href="#cb24-204" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> reg_table(rows):</span>
+<span id="cb24-205"><a href="#cb24-205" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> []</span>
+<span id="cb24-206"><a href="#cb24-206" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> r <span class="kw">in</span> [r <span class="cf">for</span> r <span class="kw">in</span> rows <span class="cf">if</span> r[<span class="st">&quot;task&quot;</span>] <span class="op">==</span> <span class="st">&quot;regression&quot;</span>]:</span>
+<span id="cb24-207"><a href="#cb24-207" aria-hidden="true" tabindex="-1"></a>        out.append({</span>
+<span id="cb24-208"><a href="#cb24-208" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Model&quot;</span>: r[<span class="st">&quot;model&quot;</span>],</span>
+<span id="cb24-209"><a href="#cb24-209" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;CV R²&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;cv_r2&quot;</span>], <span class="dv">3</span>) <span class="cf">if</span> r[<span class="st">&quot;cv_r2&quot;</span>] <span class="kw">is</span> <span class="kw">not</span> <span class="va">None</span> <span class="cf">else</span> <span class="st">&quot;n/a&quot;</span>,</span>
+<span id="cb24-210"><a href="#cb24-210" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test R²&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;r2&quot;</span>], <span class="dv">3</span>),</span>
+<span id="cb24-211"><a href="#cb24-211" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test MAE&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;mae&quot;</span>], <span class="dv">1</span>),</span>
+<span id="cb24-212"><a href="#cb24-212" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test RMSE&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;rmse&quot;</span>], <span class="dv">1</span>),</span>
+<span id="cb24-213"><a href="#cb24-213" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Train R²&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;train_r2&quot;</span>], <span class="dv">3</span>) <span class="cf">if</span> r[<span class="st">&quot;train_r2&quot;</span>] <span class="kw">is</span> <span class="kw">not</span> <span class="va">None</span> <span class="cf">else</span> <span class="st">&quot;n/a&quot;</span>,</span>
+<span id="cb24-214"><a href="#cb24-214" aria-hidden="true" tabindex="-1"></a>        })</span>
+<span id="cb24-215"><a href="#cb24-215" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> pd.DataFrame(out)</span>
+<span id="cb24-216"><a href="#cb24-216" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-217"><a href="#cb24-217" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> clf_table(rows):</span>
+<span id="cb24-218"><a href="#cb24-218" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> [{<span class="st">&quot;Model&quot;</span>: r[<span class="st">&quot;model&quot;</span>], <span class="st">&quot;CV F1&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;cv_f1&quot;</span>], <span class="dv">3</span>),</span>
+<span id="cb24-219"><a href="#cb24-219" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test Acc&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;accuracy&quot;</span>], <span class="dv">3</span>), <span class="st">&quot;Test F1&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;f1&quot;</span>], <span class="dv">3</span>),</span>
+<span id="cb24-220"><a href="#cb24-220" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test ROC-AUC&quot;</span>: (<span class="va">None</span> <span class="cf">if</span> r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;roc_auc&quot;</span>] <span class="kw">is</span> <span class="va">None</span> <span class="cf">else</span> <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;roc_auc&quot;</span>], <span class="dv">3</span>))}</span>
+<span id="cb24-221"><a href="#cb24-221" aria-hidden="true" tabindex="-1"></a>           <span class="cf">for</span> r <span class="kw">in</span> rows <span class="cf">if</span> r[<span class="st">&quot;task&quot;</span>] <span class="op">==</span> <span class="st">&quot;classification&quot;</span>]</span>
+<span id="cb24-222"><a href="#cb24-222" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> pd.DataFrame(out)</span>
+<span id="cb24-223"><a href="#cb24-223" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-224"><a href="#cb24-224" aria-hidden="true" tabindex="-1"></a>reg_table(leaderboard)</span>
+<span id="cb24-225"><a href="#cb24-225" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb24-226"><a href="#cb24-226" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-229"><a href="#cb24-229" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb24-230"><a href="#cb24-230" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: clf-leaderboard</span></span>
+<span id="cb24-231"><a href="#cb24-231" aria-hidden="true" tabindex="-1"></a>clf_table(leaderboard)</span>
+<span id="cb24-232"><a href="#cb24-232" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb24-233"><a href="#cb24-233" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-234"><a href="#cb24-234" aria-hidden="true" tabindex="-1"></a><span class="fu">## 5a. The key result: CV and the hold-out disagree — and why</span></span>
+<span id="cb24-235"><a href="#cb24-235" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-236"><a href="#cb24-236" aria-hidden="true" tabindex="-1"></a>This is the most important finding in the study, and it is a direct consequence of having</span>
+<span id="cb24-237"><a href="#cb24-237" aria-hidden="true" tabindex="-1"></a>**only one year of data**:</span>
+<span id="cb24-238"><a href="#cb24-238" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-239"><a href="#cb24-239" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>On **TimeSeriesSplit CV**, XGBoost is the best regressor (**CV R² ≈ 0.21**), clearly</span>
+<span id="cb24-240"><a href="#cb24-240" aria-hidden="true" tabindex="-1"></a>  beating the mean baseline (≈ 0).</span>
+<span id="cb24-241"><a href="#cb24-241" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>On the **Nov–Dec hold-out**, the tree models score **near-zero or negative** R².</span>
+<span id="cb24-242"><a href="#cb24-242" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-243"><a href="#cb24-243" aria-hidden="true" tabindex="-1"></a>The reason is **not** that the models are broken — it is that the hold-out months</span>
+<span id="cb24-244"><a href="#cb24-244" aria-hidden="true" tabindex="-1"></a>(November, December) are **calendar positions the model never saw in training** (Jan–Sep).</span>
+<span id="cb24-245"><a href="#cb24-245" aria-hidden="true" tabindex="-1"></a>Tree models cannot extrapolate <span class="in">`month`</span>/<span class="in">`week_of_year`</span> beyond their training range, so they</span>
+<span id="cb24-246"><a href="#cb24-246" aria-hidden="true" tabindex="-1"></a>fail precisely on the unseen tail; linear Ridge, which extrapolates, edges them out on that</span>
+<span id="cb24-247"><a href="#cb24-247" aria-hidden="true" tabindex="-1"></a>specific hold-out. With a single year, *any* future hold-out has this problem. We therefore</span>
+<span id="cb24-248"><a href="#cb24-248" aria-hidden="true" tabindex="-1"></a>**select the deployed model by the CV estimate** (the documented primary metric), giving</span>
+<span id="cb24-249"><a href="#cb24-249" aria-hidden="true" tabindex="-1"></a>**XGBoost** for revenue.</span>
+<span id="cb24-250"><a href="#cb24-250" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-253"><a href="#cb24-253" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb24-254"><a href="#cb24-254" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: depth-curve</span></span>
+<span id="cb24-255"><a href="#cb24-255" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Decision-tree validation curve. Train R² keeps rising while CV R² peaks early then collapses — textbook overfitting.&quot;</span></span>
+<span id="cb24-256"><a href="#cb24-256" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb24-257"><a href="#cb24-257" aria-hidden="true" tabindex="-1"></a>dc <span class="op">=</span> artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;depth_curve&quot;</span>]</span>
+<span id="cb24-258"><a href="#cb24-258" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">8</span>, <span class="fl">3.6</span>))</span>
+<span id="cb24-259"><a href="#cb24-259" aria-hidden="true" tabindex="-1"></a>ax.plot(dc[<span class="st">&quot;max_depth&quot;</span>], dc[<span class="st">&quot;train_r2&quot;</span>], marker<span class="op">=</span><span class="st">&quot;o&quot;</span>, label<span class="op">=</span><span class="st">&quot;train R²&quot;</span>)</span>
+<span id="cb24-260"><a href="#cb24-260" aria-hidden="true" tabindex="-1"></a>ax.plot(dc[<span class="st">&quot;max_depth&quot;</span>], dc[<span class="st">&quot;cv_r2&quot;</span>], marker<span class="op">=</span><span class="st">&quot;o&quot;</span>, label<span class="op">=</span><span class="st">&quot;CV R² (TimeSeriesSplit)&quot;</span>)</span>
+<span id="cb24-261"><a href="#cb24-261" aria-hidden="true" tabindex="-1"></a>ax.axhline(<span class="dv">0</span>, color<span class="op">=</span><span class="st">&quot;grey&quot;</span>, lw<span class="op">=</span><span class="fl">0.8</span>, ls<span class="op">=</span><span class="st">&quot;--&quot;</span>)</span>
+<span id="cb24-262"><a href="#cb24-262" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">&quot;max_depth&quot;</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">&quot;R²&quot;</span>)<span class="op">;</span> ax.legend()<span class="op">;</span> ax.grid(alpha<span class="op">=</span><span class="fl">0.3</span>)</span>
+<span id="cb24-263"><a href="#cb24-263" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">&quot;Decision tree: overfitting as depth grows&quot;</span>)</span>
+<span id="cb24-264"><a href="#cb24-264" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span>
+<span id="cb24-265"><a href="#cb24-265" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb24-266"><a href="#cb24-266" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-267"><a href="#cb24-267" aria-hidden="true" tabindex="-1"></a><span class="fu">## 5b. Predicted vs. actual, and the confusion matrix</span></span>
+<span id="cb24-268"><a href="#cb24-268" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-271"><a href="#cb24-271" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb24-272"><a href="#cb24-272" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: pred-actual</span></span>
+<span id="cb24-273"><a href="#cb24-273" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Best regression model — predicted vs. actual daily revenue on the hold-out.&quot;</span></span>
+<span id="cb24-274"><a href="#cb24-274" aria-hidden="true" tabindex="-1"></a>pva <span class="op">=</span> artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;predicted_vs_actual&quot;</span>]</span>
+<span id="cb24-275"><a href="#cb24-275" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">5</span>))</span>
+<span id="cb24-276"><a href="#cb24-276" aria-hidden="true" tabindex="-1"></a>ax.scatter(pva[<span class="st">&quot;actual&quot;</span>], pva[<span class="st">&quot;predicted&quot;</span>], alpha<span class="op">=</span><span class="fl">0.6</span>, color<span class="op">=</span><span class="st">&quot;#ff4800&quot;</span>)</span>
+<span id="cb24-277"><a href="#cb24-277" aria-hidden="true" tabindex="-1"></a>lim <span class="op">=</span> [<span class="bu">min</span>(pva[<span class="st">&quot;actual&quot;</span>]), <span class="bu">max</span>(pva[<span class="st">&quot;actual&quot;</span>])]</span>
+<span id="cb24-278"><a href="#cb24-278" aria-hidden="true" tabindex="-1"></a>ax.plot(lim, lim, color<span class="op">=</span><span class="st">&quot;grey&quot;</span>, ls<span class="op">=</span><span class="st">&quot;--&quot;</span>)</span>
+<span id="cb24-279"><a href="#cb24-279" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">&quot;Actual ($)&quot;</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">&quot;Predicted ($)&quot;</span>)</span>
+<span id="cb24-280"><a href="#cb24-280" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="ss">f&quot;Regression: </span><span class="sc">{</span>artifacts[<span class="st">&#39;regression&#39;</span>][<span class="st">&#39;best_model&#39;</span>]<span class="sc">}</span><span class="ss"> (hold-out)&quot;</span>)</span>
+<span id="cb24-281"><a href="#cb24-281" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span>
+<span id="cb24-282"><a href="#cb24-282" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb24-283"><a href="#cb24-283" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-286"><a href="#cb24-286" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb24-287"><a href="#cb24-287" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: confusion</span></span>
+<span id="cb24-288"><a href="#cb24-288" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Best classification model — confusion matrix on the hold-out.&quot;</span></span>
+<span id="cb24-289"><a href="#cb24-289" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb24-290"><a href="#cb24-290" aria-hidden="true" tabindex="-1"></a>cm <span class="op">=</span> np.array(artifacts[<span class="st">&quot;classification&quot;</span>][<span class="st">&quot;confusion_matrix&quot;</span>])</span>
+<span id="cb24-291"><a href="#cb24-291" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">4.2</span>, <span class="dv">4</span>))</span>
+<span id="cb24-292"><a href="#cb24-292" aria-hidden="true" tabindex="-1"></a>ax.imshow(cm, cmap<span class="op">=</span><span class="st">&quot;Oranges&quot;</span>)</span>
+<span id="cb24-293"><a href="#cb24-293" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i, j), v <span class="kw">in</span> np.ndenumerate(cm):</span>
+<span id="cb24-294"><a href="#cb24-294" aria-hidden="true" tabindex="-1"></a>    ax.text(j, i, <span class="bu">int</span>(v), ha<span class="op">=</span><span class="st">&quot;center&quot;</span>, va<span class="op">=</span><span class="st">&quot;center&quot;</span>, fontsize<span class="op">=</span><span class="dv">13</span>)</span>
+<span id="cb24-295"><a href="#cb24-295" aria-hidden="true" tabindex="-1"></a>ax.set_xticks([<span class="dv">0</span>, <span class="dv">1</span>], [<span class="st">&quot;Pred Normal&quot;</span>, <span class="st">&quot;Pred High&quot;</span>])</span>
+<span id="cb24-296"><a href="#cb24-296" aria-hidden="true" tabindex="-1"></a>ax.set_yticks([<span class="dv">0</span>, <span class="dv">1</span>], [<span class="st">&quot;Actual Normal&quot;</span>, <span class="st">&quot;Actual High&quot;</span>])</span>
+<span id="cb24-297"><a href="#cb24-297" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="ss">f&quot;Classification: </span><span class="sc">{</span>artifacts[<span class="st">&#39;classification&#39;</span>][<span class="st">&#39;best_model&#39;</span>]<span class="sc">}</span><span class="ss">&quot;</span>)</span>
+<span id="cb24-298"><a href="#cb24-298" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span>
+<span id="cb24-299"><a href="#cb24-299" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb24-300"><a href="#cb24-300" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-301"><a href="#cb24-301" aria-hidden="true" tabindex="-1"></a><span class="fu"># 6. Honest evaluation</span></span>
+<span id="cb24-302"><a href="#cb24-302" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-303"><a href="#cb24-303" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Report test performance, keep the baseline.** Every leaderboard row shows hold-out</span>
+<span id="cb24-304"><a href="#cb24-304" aria-hidden="true" tabindex="-1"></a>  metrics with the Dummy baseline retained. We do **not** quote training scores as results.</span>
+<span id="cb24-305"><a href="#cb24-305" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Overfitting is shown, not hidden.** The depth curve makes the train-vs-CV gap explicit;</span>
+<span id="cb24-306"><a href="#cb24-306" aria-hidden="true" tabindex="-1"></a>  the deeper trees memorise the training year and generalise worse.</span>
+<span id="cb24-307"><a href="#cb24-307" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Metric choice matters.** The majority-class classifier scores a deceptively high **F1</span>
+<span id="cb24-308"><a href="#cb24-308" aria-hidden="true" tabindex="-1"></a>  (0.60)** by predicting &quot;high&quot; for every day (perfect recall, no true negatives). Judged by</span>
+<span id="cb24-309"><a href="#cb24-309" aria-hidden="true" tabindex="-1"></a>  **ROC-AUC** — the threshold-independent metric — it sits at **0.50 (random)**, while</span>
+<span id="cb24-310"><a href="#cb24-310" aria-hidden="true" tabindex="-1"></a>  Logistic Regression reaches **0.74**. We therefore select and judge the classifier by AUC,</span>
+<span id="cb24-311"><a href="#cb24-311" aria-hidden="true" tabindex="-1"></a>  not F1.</span>
+<span id="cb24-312"><a href="#cb24-312" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**What we would and would not trust.** The classifier is a **useful &quot;busy day?&quot; signal**</span>
+<span id="cb24-313"><a href="#cb24-313" aria-hidden="true" tabindex="-1"></a>  for staffing (AUC ≈ 0.74 from the calendar alone). The revenue regressor explains only a</span>
+<span id="cb24-314"><a href="#cb24-314" aria-hidden="true" tabindex="-1"></a>  **modest share of daily variance** — daily revenue is noisy, and a single year limits how</span>
+<span id="cb24-315"><a href="#cb24-315" aria-hidden="true" tabindex="-1"></a>  far any model can generalise. We would use it for **rough planning, not financial</span>
+<span id="cb24-316"><a href="#cb24-316" aria-hidden="true" tabindex="-1"></a>  commitments**, and we would retrain as more years of data accrue.</span>
+<span id="cb24-317"><a href="#cb24-317" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**A feature we tried that did *not* help (reported, not hidden).** We added a leakage-safe</span>
+<span id="cb24-318"><a href="#cb24-318" aria-hidden="true" tabindex="-1"></a>  US-holiday and payday calendar (the <span class="in">`XGBoost (+holidays)`</span> row above). It moved cross-validated</span>
+<span id="cb24-319"><a href="#cb24-319" aria-hidden="true" tabindex="-1"></a>  R² only from 0.212 to 0.214 — noise — and was *worse* on the hold-out. The reason is concrete:</span>
+<span id="cb24-320"><a href="#cb24-320" aria-hidden="true" tabindex="-1"></a>  this restaurant&#39;s closed days (four October Mondays, two September days) don&#39;t line up with</span>
+<span id="cb24-321"><a href="#cb24-321" aria-hidden="true" tabindex="-1"></a>  public holidays — only 25 December does — so a holiday flag has almost nothing to predict</span>
+<span id="cb24-322"><a href="#cb24-322" aria-hidden="true" tabindex="-1"></a>  here. We kept the negative result and **did not deploy it**; a calendar of *this venue&#39;s own*</span>
+<span id="cb24-323"><a href="#cb24-323" aria-hidden="true" tabindex="-1"></a>  closures would be the useful version, which again points back to needing more of its data.</span>
+<span id="cb24-324"><a href="#cb24-324" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**A time-series paradigm comparison: SARIMA.** At the course instructor&#39;s suggestion, we</span>
+<span id="cb24-325"><a href="#cb24-325" aria-hidden="true" tabindex="-1"></a>  added a classical **SARIMA(p,d,q)(P,D,Q)[7]** model as a fifth regression comparison row</span>
+<span id="cb24-326"><a href="#cb24-326" aria-hidden="true" tabindex="-1"></a>  (auto-selected via <span class="in">`pmdarima.auto_arima`</span>, seasonal period m = 7 for the weekly cycle).</span>
+<span id="cb24-327"><a href="#cb24-327" aria-hidden="true" tabindex="-1"></a>  SARIMA explicitly models autocorrelation and weekly seasonality — the same weekly pattern</span>
+<span id="cb24-328"><a href="#cb24-328" aria-hidden="true" tabindex="-1"></a>  that XGBoost approximates via cyclical day-of-week encoding. The model was fitted on the</span>
+<span id="cb24-329"><a href="#cb24-329" aria-hidden="true" tabindex="-1"></a>  training series (Jan–Sep only) and generated a **pure out-of-sample 92-day forecast** evaluated</span>
+<span id="cb24-330"><a href="#cb24-330" aria-hidden="true" tabindex="-1"></a>  on the same Nov–Dec hold-out as every other model. No future data entered the fit.</span>
+<span id="cb24-331"><a href="#cb24-331" aria-hidden="true" tabindex="-1"></a>  Result: **test R² = −0.005 — essentially tied with the Dummy baseline.** This is the</span>
+<span id="cb24-332"><a href="#cb24-332" aria-hidden="true" tabindex="-1"></a>  expected outcome for a 92-day ARIMA horizon trained on a single year: error accumulates over</span>
+<span id="cb24-333"><a href="#cb24-333" aria-hidden="true" tabindex="-1"></a>  long forecast windows, and 52 weekly cycles is insufficient for robust seasonal parameter</span>
+<span id="cb24-334"><a href="#cb24-334" aria-hidden="true" tabindex="-1"></a>  estimation. The finding confirms that the cyclical encoding in XGBoost extracts as much</span>
+<span id="cb24-335"><a href="#cb24-335" aria-hidden="true" tabindex="-1"></a>  predictive signal from this dataset as a classical time-series model — and with the decisive</span>
+<span id="cb24-336"><a href="#cb24-336" aria-hidden="true" tabindex="-1"></a>  advantage of being deployable from a bare date, which ARIMA (requiring the observed series</span>
+<span id="cb24-337"><a href="#cb24-337" aria-hidden="true" tabindex="-1"></a>  at inference time) cannot match. SARIMA is included as a **report-only** comparison row; it</span>
+<span id="cb24-338"><a href="#cb24-338" aria-hidden="true" tabindex="-1"></a>  does not affect model selection or the live predictor.</span>
+<span id="cb24-339"><a href="#cb24-339" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-340"><a href="#cb24-340" aria-hidden="true" tabindex="-1"></a><span class="fu">## 6a. Time-series diagnostics (SARIMA justification)</span></span>
+<span id="cb24-341"><a href="#cb24-341" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-342"><a href="#cb24-342" aria-hidden="true" tabindex="-1"></a>The three plots below document the evidence that motivated trying SARIMA and</span>
+<span id="cb24-343"><a href="#cb24-343" aria-hidden="true" tabindex="-1"></a>explain the auto_arima parameter choices.</span>
+<span id="cb24-344"><a href="#cb24-344" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-347"><a href="#cb24-347" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb24-348"><a href="#cb24-348" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: adf-test</span></span>
+<span id="cb24-349"><a href="#cb24-349" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
+<span id="cb24-350"><a href="#cb24-350" aria-hidden="true" tabindex="-1"></a>sarima_art <span class="op">=</span> artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;sarima&quot;</span>]</span>
+<span id="cb24-351"><a href="#cb24-351" aria-hidden="true" tabindex="-1"></a>adf <span class="op">=</span> sarima_art[<span class="st">&quot;adf&quot;</span>]</span>
+<span id="cb24-352"><a href="#cb24-352" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-353"><a href="#cb24-353" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">&quot;=== Augmented Dickey-Fuller test — full daily revenue series (2015) ===&quot;</span>)</span>
+<span id="cb24-354"><a href="#cb24-354" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f&quot;  Test statistic  : </span><span class="sc">{</span>adf[<span class="st">&#39;stat&#39;</span>]<span class="sc">:&gt;10.4f}</span><span class="ss">&quot;</span>)</span>
+<span id="cb24-355"><a href="#cb24-355" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f&quot;  p-value         : </span><span class="sc">{</span>adf[<span class="st">&#39;p_value&#39;</span>]<span class="sc">:&gt;10.4f}</span><span class="ss">&quot;</span>)</span>
+<span id="cb24-356"><a href="#cb24-356" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> k, v <span class="kw">in</span> adf[<span class="st">&quot;critical_values&quot;</span>].items():</span>
+<span id="cb24-357"><a href="#cb24-357" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f&quot;  Critical </span><span class="sc">{</span>k<span class="sc">:&gt;4s}</span><span class="ss">   : </span><span class="sc">{</span>v<span class="sc">:&gt;10.4f}</span><span class="ss">&quot;</span>)</span>
+<span id="cb24-358"><a href="#cb24-358" aria-hidden="true" tabindex="-1"></a>verdict <span class="op">=</span> (</span>
+<span id="cb24-359"><a href="#cb24-359" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;✓ Stationary at 5 </span><span class="sc">% le</span><span class="st">vel (p &lt; 0.05) — no mandatory differencing.&quot;</span></span>
+<span id="cb24-360"><a href="#cb24-360" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> adf[<span class="st">&quot;stationary&quot;</span>]</span>
+<span id="cb24-361"><a href="#cb24-361" aria-hidden="true" tabindex="-1"></a>    <span class="cf">else</span> <span class="st">&quot;✗ Non-stationary (p ≥ 0.05) — auto_arima applied differencing (d ≥ 1).&quot;</span></span>
+<span id="cb24-362"><a href="#cb24-362" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb24-363"><a href="#cb24-363" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f&quot;</span><span class="ch">\n</span><span class="ss">  </span><span class="sc">{</span>verdict<span class="sc">}</span><span class="ss">&quot;</span>)</span>
+<span id="cb24-364"><a href="#cb24-364" aria-hidden="true" tabindex="-1"></a>order <span class="op">=</span> <span class="bu">tuple</span>(sarima_art[<span class="st">&quot;order&quot;</span>])</span>
+<span id="cb24-365"><a href="#cb24-365" aria-hidden="true" tabindex="-1"></a>sorder <span class="op">=</span> <span class="bu">tuple</span>(sarima_art[<span class="st">&quot;seasonal_order&quot;</span>])</span>
+<span id="cb24-366"><a href="#cb24-366" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f&quot;</span><span class="ch">\n</span><span class="ss">  SARIMA order selected by auto_arima (AIC criterion): </span><span class="sc">{</span>order<span class="sc">}</span><span class="ss">×</span><span class="sc">{</span>sorder<span class="sc">}</span><span class="ss">&quot;</span>)</span>
+<span id="cb24-367"><a href="#cb24-367" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb24-368"><a href="#cb24-368" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-371"><a href="#cb24-371" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb24-372"><a href="#cb24-372" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-acf-pacf</span></span>
+<span id="cb24-373"><a href="#cb24-373" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;ACF and PACF of daily revenue. The weekly spike pattern at lags 7, 14, 21 confirms the dominant 7-day seasonal cycle that SARIMA&#39;s seasonal component (m = 7) models. The decaying ACF and relatively quick PACF cut-off are consistent with a low-order AR process.&quot;</span></span>
+<span id="cb24-374"><a href="#cb24-374" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb24-375"><a href="#cb24-375" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> statsmodels.graphics.tsaplots <span class="im">import</span> plot_acf, plot_pacf</span>
+<span id="cb24-376"><a href="#cb24-376" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-377"><a href="#cb24-377" aria-hidden="true" tabindex="-1"></a>y_full <span class="op">=</span> daily[<span class="st">&quot;daily_revenue&quot;</span>].values</span>
+<span id="cb24-378"><a href="#cb24-378" aria-hidden="true" tabindex="-1"></a>fig, (ax1, ax2) <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="fl">3.8</span>))</span>
+<span id="cb24-379"><a href="#cb24-379" aria-hidden="true" tabindex="-1"></a>plot_acf(y_full, lags<span class="op">=</span><span class="dv">28</span>, ax<span class="op">=</span>ax1, color<span class="op">=</span><span class="st">&quot;#ff4800&quot;</span>, alpha<span class="op">=</span><span class="fl">0.05</span>)</span>
+<span id="cb24-380"><a href="#cb24-380" aria-hidden="true" tabindex="-1"></a>plot_pacf(y_full, lags<span class="op">=</span><span class="dv">28</span>, ax<span class="op">=</span>ax2, color<span class="op">=</span><span class="st">&quot;#ff4800&quot;</span>, alpha<span class="op">=</span><span class="fl">0.05</span>)</span>
+<span id="cb24-381"><a href="#cb24-381" aria-hidden="true" tabindex="-1"></a>ax1.set_title(<span class="st">&quot;ACF — daily revenue (lags 0–28)&quot;</span>)</span>
+<span id="cb24-382"><a href="#cb24-382" aria-hidden="true" tabindex="-1"></a>ax2.set_title(<span class="st">&quot;PACF — daily revenue (lags 0–28)&quot;</span>)</span>
+<span id="cb24-383"><a href="#cb24-383" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()</span>
+<span id="cb24-384"><a href="#cb24-384" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span>
+<span id="cb24-385"><a href="#cb24-385" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb24-386"><a href="#cb24-386" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-389"><a href="#cb24-389" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb24-390"><a href="#cb24-390" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-sarima-forecast</span></span>
+<span id="cb24-391"><a href="#cb24-391" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;SARIMA forecast vs actual daily revenue for the Nov–Dec hold-out (61-day evaluation window from a 92-day out-of-sample horizon). The model captures the weekly rhythm loosely, but error accumulates over the long window — consistent with the near-zero test R².&quot;</span></span>
+<span id="cb24-392"><a href="#cb24-392" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb24-393"><a href="#cb24-393" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb24-394"><a href="#cb24-394" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-395"><a href="#cb24-395" aria-hidden="true" tabindex="-1"></a>sarima_art <span class="op">=</span> artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;sarima&quot;</span>]</span>
+<span id="cb24-396"><a href="#cb24-396" aria-hidden="true" tabindex="-1"></a>dates <span class="op">=</span> pd.to_datetime(sarima_art[<span class="st">&quot;forecast_dates&quot;</span>])</span>
+<span id="cb24-397"><a href="#cb24-397" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">9</span>, <span class="fl">3.8</span>))</span>
+<span id="cb24-398"><a href="#cb24-398" aria-hidden="true" tabindex="-1"></a>ax.plot(dates, sarima_art[<span class="st">&quot;forecast_actual&quot;</span>], color<span class="op">=</span><span class="st">&quot;#333&quot;</span>, label<span class="op">=</span><span class="st">&quot;Actual&quot;</span>, lw<span class="op">=</span><span class="fl">1.5</span>)</span>
+<span id="cb24-399"><a href="#cb24-399" aria-hidden="true" tabindex="-1"></a>ax.plot(dates, sarima_art[<span class="st">&quot;forecast_predicted&quot;</span>], color<span class="op">=</span><span class="st">&quot;#ff4800&quot;</span>, ls<span class="op">=</span><span class="st">&quot;--&quot;</span>,</span>
+<span id="cb24-400"><a href="#cb24-400" aria-hidden="true" tabindex="-1"></a>        label<span class="op">=</span><span class="st">&quot;SARIMA forecast&quot;</span>, lw<span class="op">=</span><span class="fl">1.5</span>)</span>
+<span id="cb24-401"><a href="#cb24-401" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">&quot;Date&quot;</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">&quot;Daily revenue ($)&quot;</span>)</span>
+<span id="cb24-402"><a href="#cb24-402" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">&quot;SARIMA forecast vs actual — Nov–Dec 2015&quot;</span>)</span>
+<span id="cb24-403"><a href="#cb24-403" aria-hidden="true" tabindex="-1"></a>ax.legend()<span class="op">;</span> ax.grid(alpha<span class="op">=</span><span class="fl">0.3</span>)</span>
+<span id="cb24-404"><a href="#cb24-404" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()</span>
+<span id="cb24-405"><a href="#cb24-405" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span>
+<span id="cb24-406"><a href="#cb24-406" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb24-407"><a href="#cb24-407" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-408"><a href="#cb24-408" aria-hidden="true" tabindex="-1"></a><span class="fu">## Would more data help? A learning curve</span></span>
+<span id="cb24-409"><a href="#cb24-409" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-412"><a href="#cb24-412" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb24-413"><a href="#cb24-413" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-learning</span></span>
+<span id="cb24-414"><a href="#cb24-414" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;XGBoost learning curve (TimeSeriesSplit). Train R² sits well above CV R² at every training size — a wide, persistent gap that does not close within one year of data.&quot;</span></span>
+<span id="cb24-415"><a href="#cb24-415" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb24-416"><a href="#cb24-416" aria-hidden="true" tabindex="-1"></a>lc <span class="op">=</span> artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;learning_curve&quot;</span>]</span>
+<span id="cb24-417"><a href="#cb24-417" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">8</span>, <span class="fl">3.6</span>))</span>
+<span id="cb24-418"><a href="#cb24-418" aria-hidden="true" tabindex="-1"></a>ax.plot(lc[<span class="st">&quot;train_sizes&quot;</span>], lc[<span class="st">&quot;train_r2&quot;</span>], marker<span class="op">=</span><span class="st">&quot;o&quot;</span>, label<span class="op">=</span><span class="st">&quot;train R²&quot;</span>)</span>
+<span id="cb24-419"><a href="#cb24-419" aria-hidden="true" tabindex="-1"></a>ax.plot(lc[<span class="st">&quot;train_sizes&quot;</span>], lc[<span class="st">&quot;cv_r2&quot;</span>], marker<span class="op">=</span><span class="st">&quot;o&quot;</span>, label<span class="op">=</span><span class="st">&quot;CV R² (TimeSeriesSplit)&quot;</span>)</span>
+<span id="cb24-420"><a href="#cb24-420" aria-hidden="true" tabindex="-1"></a>ax.axhline(<span class="dv">0</span>, color<span class="op">=</span><span class="st">&quot;grey&quot;</span>, lw<span class="op">=</span><span class="fl">0.8</span>, ls<span class="op">=</span><span class="st">&quot;--&quot;</span>)</span>
+<span id="cb24-421"><a href="#cb24-421" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">&quot;training days used (per CV fold)&quot;</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">&quot;R²&quot;</span>)<span class="op">;</span> ax.legend()<span class="op">;</span> ax.grid(alpha<span class="op">=</span><span class="fl">0.3</span>)</span>
+<span id="cb24-422"><a href="#cb24-422" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">&quot;XGBoost — learning curve&quot;</span>)</span>
+<span id="cb24-423"><a href="#cb24-423" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span>
+<span id="cb24-424"><a href="#cb24-424" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb24-425"><a href="#cb24-425" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-426"><a href="#cb24-426" aria-hidden="true" tabindex="-1"></a>The train score stays well above the cross-validated score at **every** training size — a</span>
+<span id="cb24-427"><a href="#cb24-427" aria-hidden="true" tabindex="-1"></a>persistent gap of roughly 0.3–0.4 that the available data never closes, with CV R² holding in</span>
+<span id="cb24-428"><a href="#cb24-428" aria-hidden="true" tabindex="-1"></a>a modest, noisy band around 0.15. That wide, stubborn train–CV gap is the textbook signature of</span>
+<span id="cb24-429"><a href="#cb24-429" aria-hidden="true" tabindex="-1"></a>a **high-variance, data-limited** model: it has the capacity to fit, but not enough history to</span>
+<span id="cb24-430"><a href="#cb24-430" aria-hidden="true" tabindex="-1"></a>generalise. (The x-axis is short because TimeSeriesSplit&#39;s early folds train on few days; even</span>
+<span id="cb24-431"><a href="#cb24-431" aria-hidden="true" tabindex="-1"></a>so, the gap never narrows.) This is the honest, evidence-backed version of the</span>
+<span id="cb24-432"><a href="#cb24-432" aria-hidden="true" tabindex="-1"></a>&quot;invest in more data&quot; recommendation — more than a fancier model, more *history* is what would</span>
+<span id="cb24-433"><a href="#cb24-433" aria-hidden="true" tabindex="-1"></a>move the revenue forecast.</span>
+<span id="cb24-434"><a href="#cb24-434" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-435"><a href="#cb24-435" aria-hidden="true" tabindex="-1"></a><span class="fu"># 7. Business interpretation</span></span>
+<span id="cb24-436"><a href="#cb24-436" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-437"><a href="#cb24-437" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Weekends and Fridays are the demand peaks** — the weekly pattern is the strongest,</span>
+<span id="cb24-438"><a href="#cb24-438" aria-hidden="true" tabindex="-1"></a>  most reliable signal. Staff and stock to it.</span>
+<span id="cb24-439"><a href="#cb24-439" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**A simple calendar model already flags busy days** well enough to inform shift planning</span>
+<span id="cb24-440"><a href="#cb24-440" aria-hidden="true" tabindex="-1"></a>  (AUC ≈ 0.74), with no point-of-sale integration required.</span>
+<span id="cb24-441"><a href="#cb24-441" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Revenue forecasting needs more than the calendar.** Promotions, weather, and local</span>
+<span id="cb24-442"><a href="#cb24-442" aria-hidden="true" tabindex="-1"></a>  events likely drive the unexplained variance; capturing them is the clear next step.</span>
+<span id="cb24-443"><a href="#cb24-443" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**More history is the highest-value investment.** The single-year limitation — not the</span>
+<span id="cb24-444"><a href="#cb24-444" aria-hidden="true" tabindex="-1"></a>  model choice — is what caps accuracy here.</span>
+<span id="cb24-445"><a href="#cb24-445" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-446"><a href="#cb24-446" aria-hidden="true" tabindex="-1"></a><span class="fu">## Which features matter? (permutation importance)</span></span>
+<span id="cb24-447"><a href="#cb24-447" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-450"><a href="#cb24-450" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb24-451"><a href="#cb24-451" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-importance</span></span>
+<span id="cb24-452"><a href="#cb24-452" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Permutation importance on the hold-out set — how much each feature actually moves the prediction. Confirms the weekly rhythm (weekend / day-of-week) is the dominant driver for both tasks.&quot;</span></span>
+<span id="cb24-453"><a href="#cb24-453" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb24-454"><a href="#cb24-454" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-455"><a href="#cb24-455" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> _imp_ax(ax, ranked, title, color):</span>
+<span id="cb24-456"><a href="#cb24-456" aria-hidden="true" tabindex="-1"></a>    top <span class="op">=</span> ranked[:<span class="dv">8</span>][::<span class="op">-</span><span class="dv">1</span>]</span>
+<span id="cb24-457"><a href="#cb24-457" aria-hidden="true" tabindex="-1"></a>    ax.barh([d[<span class="st">&quot;feature&quot;</span>] <span class="cf">for</span> d <span class="kw">in</span> top], [d[<span class="st">&quot;importance&quot;</span>] <span class="cf">for</span> d <span class="kw">in</span> top], color<span class="op">=</span>color)</span>
+<span id="cb24-458"><a href="#cb24-458" aria-hidden="true" tabindex="-1"></a>    ax.set_title(title, fontsize<span class="op">=</span><span class="dv">11</span>)<span class="op">;</span> ax.tick_params(labelsize<span class="op">=</span><span class="dv">8</span>)</span>
+<span id="cb24-459"><a href="#cb24-459" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-460"><a href="#cb24-460" aria-hidden="true" tabindex="-1"></a>fig, axes <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="fl">3.8</span>))</span>
+<span id="cb24-461"><a href="#cb24-461" aria-hidden="true" tabindex="-1"></a>_imp_ax(axes[<span class="dv">0</span>], artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;permutation_importance&quot;</span>],</span>
+<span id="cb24-462"><a href="#cb24-462" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f&quot;Revenue — </span><span class="sc">{</span>artifacts[<span class="st">&#39;regression&#39;</span>][<span class="st">&#39;best_model&#39;</span>]<span class="sc">}</span><span class="ss">&quot;</span>, <span class="st">&quot;#ff4800&quot;</span>)</span>
+<span id="cb24-463"><a href="#cb24-463" aria-hidden="true" tabindex="-1"></a>_imp_ax(axes[<span class="dv">1</span>], artifacts[<span class="st">&quot;classification&quot;</span>][<span class="st">&quot;permutation_importance&quot;</span>],</span>
+<span id="cb24-464"><a href="#cb24-464" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f&quot;High-demand — </span><span class="sc">{</span>artifacts[<span class="st">&#39;classification&#39;</span>][<span class="st">&#39;best_model&#39;</span>]<span class="sc">}</span><span class="ss">&quot;</span>, <span class="st">&quot;#2360c4&quot;</span>)</span>
+<span id="cb24-465"><a href="#cb24-465" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()</span>
+<span id="cb24-466"><a href="#cb24-466" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span>
+<span id="cb24-467"><a href="#cb24-467" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb24-468"><a href="#cb24-468" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-469"><a href="#cb24-469" aria-hidden="true" tabindex="-1"></a>The features that most move the predictions are the **weekend flag and the day-of-week</span>
+<span id="cb24-470"><a href="#cb24-470" aria-hidden="true" tabindex="-1"></a>encodings** — direct evidence for the headline claim that *the weekly rhythm is the strongest,</span>
+<span id="cb24-471"><a href="#cb24-471" aria-hidden="true" tabindex="-1"></a>most reliable signal*. (Permutation importance is computed on the hold-out set and is</span>
+<span id="cb24-472"><a href="#cb24-472" aria-hidden="true" tabindex="-1"></a>report-only; it does not influence model selection or the deployed models.)</span>
+<span id="cb24-473"><a href="#cb24-473" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-474"><a href="#cb24-474" aria-hidden="true" tabindex="-1"></a>---</span>
+<span id="cb24-475"><a href="#cb24-475" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-476"><a href="#cb24-476" aria-hidden="true" tabindex="-1"></a>*Reproducibility: every figure and number above is produced by executed code in this</span>
+<span id="cb24-477"><a href="#cb24-477" aria-hidden="true" tabindex="-1"></a>document, from the committed data and the seeded (<span class="in">`RANDOM_SEED = 42`</span>) pipeline in <span class="in">`src/`</span>.</span>
+<span id="cb24-478"><a href="#cb24-478" aria-hidden="true" tabindex="-1"></a>Run <span class="in">`quarto render report.qmd`</span> from a clean checkout to regenerate.*</span>
 </code></pre></div><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal><i class="bi"></i></button></div>
 </div></div></div></div></div>
 </div> <!-- /content -->

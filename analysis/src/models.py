@@ -96,12 +96,15 @@ def _pipe(model, scale: bool = False) -> Pipeline:
 # --- Regression -------------------------------------------------------------
 
 def _sarima_regression_row(train: "pd.DataFrame", test: "pd.DataFrame",
-                           y_test: "np.ndarray") -> dict:
+                           y_test: "np.ndarray") -> "tuple[dict, dict]":
     """SARIMA(p,d,q)(P,D,Q)[7] on raw daily revenue — report-only.
 
     Fits on the training series (Jan–Sep) and forecasts forward to Dec 31.
     Evaluates on the Nov–Dec holdout only (same slice as every other model).
     Cannot be deployed: requires the observed series at inference time.
+
+    Returns (leaderboard_row, report_artifacts) where report_artifacts contains
+    the SARIMA order and the forecast vs actual series for the report charts.
     """
     try:
         from pmdarima import auto_arima
@@ -128,7 +131,7 @@ def _sarima_regression_row(train: "pd.DataFrame", test: "pd.DataFrame",
     forecast_all = model.predict(n_periods=n_forecast)
     y_pred = forecast_all[-n_test:]
 
-    return {
+    row = {
         "task": "regression",
         "model": "SARIMA",
         "test": {
@@ -140,6 +143,16 @@ def _sarima_regression_row(train: "pd.DataFrame", test: "pd.DataFrame",
         "cv_r2": None,
         "report_only": True,
     }
+
+    artifacts = {
+        "order": list(model.order),
+        "seasonal_order": list(model.seasonal_order),
+        "forecast_dates": [d.strftime("%Y-%m-%d") for d in test.index],
+        "forecast_predicted": [float(v) for v in y_pred],
+        "forecast_actual": [float(v) for v in y_test],
+    }
+
+    return row, artifacts
 
 
 def _regression_ladder():
@@ -283,7 +296,23 @@ def train_all(write: bool = True) -> dict:
     # (Nov-Dec) are evaluated against the same holdout as every other model.
     # cv_r2 and train_r2 are null: TimeSeriesSplit CV has no natural analogue for a
     # univariate ARIMA forecast.
-    results["leaderboard"].append(_sarima_regression_row(train, test, yte))
+    sarima_row, sarima_artifacts = _sarima_regression_row(train, test, yte)
+    results["leaderboard"].append(sarima_row)
+
+    # ADF stationarity test on the full 2015 revenue series (report-only evidence).
+    try:
+        from statsmodels.tsa.stattools import adfuller
+        y_full = feats.sort_index()[TARGET_REGRESSION].values
+        adf_stat, adf_p, _, _, adf_cv, _ = adfuller(y_full, autolag="AIC")
+        sarima_artifacts["adf"] = {
+            "stat": float(adf_stat),
+            "p_value": float(adf_p),
+            "critical_values": {k: float(v) for k, v in adf_cv.items()},
+            "stationary": bool(adf_p < 0.05),
+        }
+    except ImportError:
+        pass
+    results["regression"]["sarima"] = sarima_artifacts
 
     # Select the deployable model by the PRIMARY metric (TimeSeriesSplit CV),
     # not the Nov-Dec holdout: the holdout's calendar positions are unseen in
