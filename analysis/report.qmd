@@ -182,10 +182,16 @@ estimate) and the **Nov–Dec hold-out** score.
 #| label: leaderboard-tables
 #| code-fold: true
 def reg_table(rows):
-    out = [{"Model": r["model"], "CV R²": round(r["cv_r2"], 3),
-            "Test R²": round(r["test"]["r2"], 3), "Test MAE": round(r["test"]["mae"], 1),
-            "Test RMSE": round(r["test"]["rmse"], 1), "Train R²": round(r["train_r2"], 3)}
-           for r in rows if r["task"] == "regression"]
+    out = []
+    for r in [r for r in rows if r["task"] == "regression"]:
+        out.append({
+            "Model": r["model"],
+            "CV R²": round(r["cv_r2"], 3) if r["cv_r2"] is not None else "n/a",
+            "Test R²": round(r["test"]["r2"], 3),
+            "Test MAE": round(r["test"]["mae"], 1),
+            "Test RMSE": round(r["test"]["rmse"], 1),
+            "Train R²": round(r["train_r2"], 3) if r["train_r2"] is not None else "n/a",
+        })
     return pd.DataFrame(out)
 
 def clf_table(rows):
@@ -287,6 +293,21 @@ fig;
   public holidays — only 25 December does — so a holiday flag has almost nothing to predict
   here. We kept the negative result and **did not deploy it**; a calendar of *this venue's own*
   closures would be the useful version, which again points back to needing more of its data.
+- **A time-series paradigm comparison: SARIMA.** At the course instructor's suggestion, we
+  added a classical **SARIMA(p,d,q)(P,D,Q)[7]** model as a fifth regression comparison row
+  (auto-selected via `pmdarima.auto_arima`, seasonal period m = 7 for the weekly cycle).
+  SARIMA explicitly models autocorrelation and weekly seasonality — the same weekly pattern
+  that XGBoost approximates via cyclical day-of-week encoding. The model was fitted on the
+  training series (Jan–Sep only) and generated a **pure out-of-sample 92-day forecast** evaluated
+  on the same Nov–Dec hold-out as every other model. No future data entered the fit.
+  Result: **test R² = −0.005 — essentially tied with the Dummy baseline.** This is the
+  expected outcome for a 92-day ARIMA horizon trained on a single year: error accumulates over
+  long forecast windows, and 52 weekly cycles is insufficient for robust seasonal parameter
+  estimation. The finding confirms that the cyclical encoding in XGBoost extracts as much
+  predictive signal from this dataset as a classical time-series model — and with the decisive
+  advantage of being deployable from a bare date, which ARIMA (requiring the observed series
+  at inference time) cannot match. SARIMA is included as a **report-only** comparison row; it
+  does not affect model selection or the live predictor.
 
 ## Would more data help? A learning curve
 

@@ -2547,20 +2547,26 @@ Split: train = Jan–Sep, validation = Oct, test = Nov–Dec (time-ordered).</co
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> reg_table(rows):</span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> [{<span class="st">&quot;Model&quot;</span>: r[<span class="st">&quot;model&quot;</span>], <span class="st">&quot;CV R²&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;cv_r2&quot;</span>], <span class="dv">3</span>),</span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test R²&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;r2&quot;</span>], <span class="dv">3</span>), <span class="st">&quot;Test MAE&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;mae&quot;</span>], <span class="dv">1</span>),</span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test RMSE&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;rmse&quot;</span>], <span class="dv">1</span>), <span class="st">&quot;Train R²&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;train_r2&quot;</span>], <span class="dv">3</span>)}</span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>           <span class="cf">for</span> r <span class="kw">in</span> rows <span class="cf">if</span> r[<span class="st">&quot;task&quot;</span>] <span class="op">==</span> <span class="st">&quot;regression&quot;</span>]</span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> pd.DataFrame(out)</span>
-<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> clf_table(rows):</span>
-<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> [{<span class="st">&quot;Model&quot;</span>: r[<span class="st">&quot;model&quot;</span>], <span class="st">&quot;CV F1&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;cv_f1&quot;</span>], <span class="dv">3</span>),</span>
-<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test Acc&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;accuracy&quot;</span>], <span class="dv">3</span>), <span class="st">&quot;Test F1&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;f1&quot;</span>], <span class="dv">3</span>),</span>
-<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test ROC-AUC&quot;</span>: (<span class="va">None</span> <span class="cf">if</span> r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;roc_auc&quot;</span>] <span class="kw">is</span> <span class="va">None</span> <span class="cf">else</span> <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;roc_auc&quot;</span>], <span class="dv">3</span>))}</span>
-<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>           <span class="cf">for</span> r <span class="kw">in</span> rows <span class="cf">if</span> r[<span class="st">&quot;task&quot;</span>] <span class="op">==</span> <span class="st">&quot;classification&quot;</span>]</span>
-<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> pd.DataFrame(out)</span>
-<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>reg_table(leaderboard)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> []</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> r <span class="kw">in</span> [r <span class="cf">for</span> r <span class="kw">in</span> rows <span class="cf">if</span> r[<span class="st">&quot;task&quot;</span>] <span class="op">==</span> <span class="st">&quot;regression&quot;</span>]:</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>        out.append({</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Model&quot;</span>: r[<span class="st">&quot;model&quot;</span>],</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;CV R²&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;cv_r2&quot;</span>], <span class="dv">3</span>) <span class="cf">if</span> r[<span class="st">&quot;cv_r2&quot;</span>] <span class="kw">is</span> <span class="kw">not</span> <span class="va">None</span> <span class="cf">else</span> <span class="st">&quot;n/a&quot;</span>,</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test R²&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;r2&quot;</span>], <span class="dv">3</span>),</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test MAE&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;mae&quot;</span>], <span class="dv">1</span>),</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test RMSE&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;rmse&quot;</span>], <span class="dv">1</span>),</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Train R²&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;train_r2&quot;</span>], <span class="dv">3</span>) <span class="cf">if</span> r[<span class="st">&quot;train_r2&quot;</span>] <span class="kw">is</span> <span class="kw">not</span> <span class="va">None</span> <span class="cf">else</span> <span class="st">&quot;n/a&quot;</span>,</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>        })</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> pd.DataFrame(out)</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> clf_table(rows):</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> [{<span class="st">&quot;Model&quot;</span>: r[<span class="st">&quot;model&quot;</span>], <span class="st">&quot;CV F1&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;cv_f1&quot;</span>], <span class="dv">3</span>),</span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test Acc&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;accuracy&quot;</span>], <span class="dv">3</span>), <span class="st">&quot;Test F1&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;f1&quot;</span>], <span class="dv">3</span>),</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test ROC-AUC&quot;</span>: (<span class="va">None</span> <span class="cf">if</span> r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;roc_auc&quot;</span>] <span class="kw">is</span> <span class="va">None</span> <span class="cf">else</span> <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;roc_auc&quot;</span>], <span class="dv">3</span>))}</span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>           <span class="cf">for</span> r <span class="kw">in</span> rows <span class="cf">if</span> r[<span class="st">&quot;task&quot;</span>] <span class="op">==</span> <span class="st">&quot;classification&quot;</span>]</span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> pd.DataFrame(out)</span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a>reg_table(leaderboard)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div id="leaderboard-tables" class="cell-output cell-output-display" data-execution_count="10">
 <div>
@@ -2586,7 +2592,7 @@ Split: train = Jan–Sep, validation = Oct, test = Nov–Dec (time-ordered).</co
 <td>-0.007</td>
 <td>388.1</td>
 <td>615.6</td>
-<td>0.000</td>
+<td>0.0</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">1</th>
@@ -2632,6 +2638,15 @@ Split: train = Jan–Sep, validation = Oct, test = Nov–Dec (time-ordered).</co
 <td>404.6</td>
 <td>664.1</td>
 <td>0.403</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">6</th>
+<td>SARIMA</td>
+<td>n/a</td>
+<td>-0.005</td>
+<td>385.7</td>
+<td>614.8</td>
+<td>n/a</td>
 </tr>
 </tbody>
 </table>
@@ -2761,6 +2776,7 @@ Split: train = Jan–Sep, validation = Oct, test = Nov–Dec (time-ordered).</co
 <li><strong>Metric choice matters.</strong> The majority-class classifier scores a deceptively high <strong>F1 (0.60)</strong> by predicting “high” for every day (perfect recall, no true negatives). Judged by <strong>ROC-AUC</strong> — the threshold-independent metric — it sits at <strong>0.50 (random)</strong>, while Logistic Regression reaches <strong>0.74</strong>. We therefore select and judge the classifier by AUC, not F1.</li>
 <li><strong>What we would and would not trust.</strong> The classifier is a <strong>useful “busy day?” signal</strong> for staffing (AUC ≈ 0.74 from the calendar alone). The revenue regressor explains only a <strong>modest share of daily variance</strong> — daily revenue is noisy, and a single year limits how far any model can generalise. We would use it for <strong>rough planning, not financial commitments</strong>, and we would retrain as more years of data accrue.</li>
 <li><strong>A feature we tried that did <em>not</em> help (reported, not hidden).</strong> We added a leakage-safe US-holiday and payday calendar (the <code>XGBoost (+holidays)</code> row above). It moved cross-validated R² only from 0.212 to 0.214 — noise — and was <em>worse</em> on the hold-out. The reason is concrete: this restaurant’s closed days (four October Mondays, two September days) don’t line up with public holidays — only 25 December does — so a holiday flag has almost nothing to predict here. We kept the negative result and <strong>did not deploy it</strong>; a calendar of <em>this venue’s own</em> closures would be the useful version, which again points back to needing more of its data.</li>
+<li><strong>A time-series paradigm comparison: SARIMA.</strong> At the course instructor’s suggestion, we added a classical <strong>SARIMA(p,d,q)(P,D,Q)[7]</strong> model as a fifth regression comparison row (auto-selected via <code>pmdarima.auto_arima</code>, seasonal period m = 7 for the weekly cycle). SARIMA explicitly models autocorrelation and weekly seasonality — the same weekly pattern that XGBoost approximates via cyclical day-of-week encoding. The model was fitted on the training series (Jan–Sep only) and generated a <strong>pure out-of-sample 92-day forecast</strong> evaluated on the same Nov–Dec hold-out as every other model. No future data entered the fit. Result: <strong>test R² = −0.005 — essentially tied with the Dummy baseline.</strong> This is the expected outcome for a 92-day ARIMA horizon trained on a single year: error accumulates over long forecast windows, and 52 weekly cycles is insufficient for robust seasonal parameter estimation. The finding confirms that the cyclical encoding in XGBoost extracts as much predictive signal from this dataset as a classical time-series model — and with the decisive advantage of being deployable from a bare date, which ARIMA (requiring the observed series at inference time) cannot match. SARIMA is included as a <strong>report-only</strong> comparison row; it does not affect model selection or the live predictor.</li>
 </ul>
 <section id="would-more-data-help-a-learning-curve" class="level2">
 <h2 class="anchored" data-anchor-id="would-more-data-help-a-learning-curve">Would more data help? A learning curve</h2>
@@ -3469,179 +3485,200 @@ Figure 7
 <span id="cb20-202"><a href="#cb20-202" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: leaderboard-tables</span></span>
 <span id="cb20-203"><a href="#cb20-203" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: true</span></span>
 <span id="cb20-204"><a href="#cb20-204" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> reg_table(rows):</span>
-<span id="cb20-205"><a href="#cb20-205" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> [{<span class="st">&quot;Model&quot;</span>: r[<span class="st">&quot;model&quot;</span>], <span class="st">&quot;CV R²&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;cv_r2&quot;</span>], <span class="dv">3</span>),</span>
-<span id="cb20-206"><a href="#cb20-206" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test R²&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;r2&quot;</span>], <span class="dv">3</span>), <span class="st">&quot;Test MAE&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;mae&quot;</span>], <span class="dv">1</span>),</span>
-<span id="cb20-207"><a href="#cb20-207" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test RMSE&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;rmse&quot;</span>], <span class="dv">1</span>), <span class="st">&quot;Train R²&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;train_r2&quot;</span>], <span class="dv">3</span>)}</span>
-<span id="cb20-208"><a href="#cb20-208" aria-hidden="true" tabindex="-1"></a>           <span class="cf">for</span> r <span class="kw">in</span> rows <span class="cf">if</span> r[<span class="st">&quot;task&quot;</span>] <span class="op">==</span> <span class="st">&quot;regression&quot;</span>]</span>
-<span id="cb20-209"><a href="#cb20-209" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> pd.DataFrame(out)</span>
-<span id="cb20-210"><a href="#cb20-210" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-211"><a href="#cb20-211" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> clf_table(rows):</span>
-<span id="cb20-212"><a href="#cb20-212" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> [{<span class="st">&quot;Model&quot;</span>: r[<span class="st">&quot;model&quot;</span>], <span class="st">&quot;CV F1&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;cv_f1&quot;</span>], <span class="dv">3</span>),</span>
-<span id="cb20-213"><a href="#cb20-213" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test Acc&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;accuracy&quot;</span>], <span class="dv">3</span>), <span class="st">&quot;Test F1&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;f1&quot;</span>], <span class="dv">3</span>),</span>
-<span id="cb20-214"><a href="#cb20-214" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test ROC-AUC&quot;</span>: (<span class="va">None</span> <span class="cf">if</span> r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;roc_auc&quot;</span>] <span class="kw">is</span> <span class="va">None</span> <span class="cf">else</span> <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;roc_auc&quot;</span>], <span class="dv">3</span>))}</span>
-<span id="cb20-215"><a href="#cb20-215" aria-hidden="true" tabindex="-1"></a>           <span class="cf">for</span> r <span class="kw">in</span> rows <span class="cf">if</span> r[<span class="st">&quot;task&quot;</span>] <span class="op">==</span> <span class="st">&quot;classification&quot;</span>]</span>
-<span id="cb20-216"><a href="#cb20-216" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> pd.DataFrame(out)</span>
-<span id="cb20-217"><a href="#cb20-217" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-218"><a href="#cb20-218" aria-hidden="true" tabindex="-1"></a>reg_table(leaderboard)</span>
-<span id="cb20-219"><a href="#cb20-219" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb20-220"><a href="#cb20-220" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-223"><a href="#cb20-223" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
-<span id="cb20-224"><a href="#cb20-224" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: clf-leaderboard</span></span>
-<span id="cb20-225"><a href="#cb20-225" aria-hidden="true" tabindex="-1"></a>clf_table(leaderboard)</span>
-<span id="cb20-226"><a href="#cb20-226" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb20-227"><a href="#cb20-227" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-228"><a href="#cb20-228" aria-hidden="true" tabindex="-1"></a><span class="fu">## 5a. The key result: CV and the hold-out disagree — and why</span></span>
-<span id="cb20-229"><a href="#cb20-229" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-230"><a href="#cb20-230" aria-hidden="true" tabindex="-1"></a>This is the most important finding in the study, and it is a direct consequence of having</span>
-<span id="cb20-231"><a href="#cb20-231" aria-hidden="true" tabindex="-1"></a>**only one year of data**:</span>
-<span id="cb20-232"><a href="#cb20-232" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-233"><a href="#cb20-233" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>On **TimeSeriesSplit CV**, XGBoost is the best regressor (**CV R² ≈ 0.21**), clearly</span>
-<span id="cb20-234"><a href="#cb20-234" aria-hidden="true" tabindex="-1"></a>  beating the mean baseline (≈ 0).</span>
-<span id="cb20-235"><a href="#cb20-235" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>On the **Nov–Dec hold-out**, the tree models score **near-zero or negative** R².</span>
-<span id="cb20-236"><a href="#cb20-236" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-237"><a href="#cb20-237" aria-hidden="true" tabindex="-1"></a>The reason is **not** that the models are broken — it is that the hold-out months</span>
-<span id="cb20-238"><a href="#cb20-238" aria-hidden="true" tabindex="-1"></a>(November, December) are **calendar positions the model never saw in training** (Jan–Sep).</span>
-<span id="cb20-239"><a href="#cb20-239" aria-hidden="true" tabindex="-1"></a>Tree models cannot extrapolate <span class="in">`month`</span>/<span class="in">`week_of_year`</span> beyond their training range, so they</span>
-<span id="cb20-240"><a href="#cb20-240" aria-hidden="true" tabindex="-1"></a>fail precisely on the unseen tail; linear Ridge, which extrapolates, edges them out on that</span>
-<span id="cb20-241"><a href="#cb20-241" aria-hidden="true" tabindex="-1"></a>specific hold-out. With a single year, *any* future hold-out has this problem. We therefore</span>
-<span id="cb20-242"><a href="#cb20-242" aria-hidden="true" tabindex="-1"></a>**select the deployed model by the CV estimate** (the documented primary metric), giving</span>
-<span id="cb20-243"><a href="#cb20-243" aria-hidden="true" tabindex="-1"></a>**XGBoost** for revenue.</span>
-<span id="cb20-244"><a href="#cb20-244" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-247"><a href="#cb20-247" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
-<span id="cb20-248"><a href="#cb20-248" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: depth-curve</span></span>
-<span id="cb20-249"><a href="#cb20-249" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Decision-tree validation curve. Train R² keeps rising while CV R² peaks early then collapses — textbook overfitting.&quot;</span></span>
-<span id="cb20-250"><a href="#cb20-250" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
-<span id="cb20-251"><a href="#cb20-251" aria-hidden="true" tabindex="-1"></a>dc <span class="op">=</span> artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;depth_curve&quot;</span>]</span>
-<span id="cb20-252"><a href="#cb20-252" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">8</span>, <span class="fl">3.6</span>))</span>
-<span id="cb20-253"><a href="#cb20-253" aria-hidden="true" tabindex="-1"></a>ax.plot(dc[<span class="st">&quot;max_depth&quot;</span>], dc[<span class="st">&quot;train_r2&quot;</span>], marker<span class="op">=</span><span class="st">&quot;o&quot;</span>, label<span class="op">=</span><span class="st">&quot;train R²&quot;</span>)</span>
-<span id="cb20-254"><a href="#cb20-254" aria-hidden="true" tabindex="-1"></a>ax.plot(dc[<span class="st">&quot;max_depth&quot;</span>], dc[<span class="st">&quot;cv_r2&quot;</span>], marker<span class="op">=</span><span class="st">&quot;o&quot;</span>, label<span class="op">=</span><span class="st">&quot;CV R² (TimeSeriesSplit)&quot;</span>)</span>
-<span id="cb20-255"><a href="#cb20-255" aria-hidden="true" tabindex="-1"></a>ax.axhline(<span class="dv">0</span>, color<span class="op">=</span><span class="st">&quot;grey&quot;</span>, lw<span class="op">=</span><span class="fl">0.8</span>, ls<span class="op">=</span><span class="st">&quot;--&quot;</span>)</span>
-<span id="cb20-256"><a href="#cb20-256" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">&quot;max_depth&quot;</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">&quot;R²&quot;</span>)<span class="op">;</span> ax.legend()<span class="op">;</span> ax.grid(alpha<span class="op">=</span><span class="fl">0.3</span>)</span>
-<span id="cb20-257"><a href="#cb20-257" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">&quot;Decision tree: overfitting as depth grows&quot;</span>)</span>
-<span id="cb20-258"><a href="#cb20-258" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span>
-<span id="cb20-259"><a href="#cb20-259" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb20-260"><a href="#cb20-260" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-261"><a href="#cb20-261" aria-hidden="true" tabindex="-1"></a><span class="fu">## 5b. Predicted vs. actual, and the confusion matrix</span></span>
-<span id="cb20-262"><a href="#cb20-262" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-265"><a href="#cb20-265" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
-<span id="cb20-266"><a href="#cb20-266" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: pred-actual</span></span>
-<span id="cb20-267"><a href="#cb20-267" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Best regression model — predicted vs. actual daily revenue on the hold-out.&quot;</span></span>
-<span id="cb20-268"><a href="#cb20-268" aria-hidden="true" tabindex="-1"></a>pva <span class="op">=</span> artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;predicted_vs_actual&quot;</span>]</span>
-<span id="cb20-269"><a href="#cb20-269" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">5</span>))</span>
-<span id="cb20-270"><a href="#cb20-270" aria-hidden="true" tabindex="-1"></a>ax.scatter(pva[<span class="st">&quot;actual&quot;</span>], pva[<span class="st">&quot;predicted&quot;</span>], alpha<span class="op">=</span><span class="fl">0.6</span>, color<span class="op">=</span><span class="st">&quot;#ff4800&quot;</span>)</span>
-<span id="cb20-271"><a href="#cb20-271" aria-hidden="true" tabindex="-1"></a>lim <span class="op">=</span> [<span class="bu">min</span>(pva[<span class="st">&quot;actual&quot;</span>]), <span class="bu">max</span>(pva[<span class="st">&quot;actual&quot;</span>])]</span>
-<span id="cb20-272"><a href="#cb20-272" aria-hidden="true" tabindex="-1"></a>ax.plot(lim, lim, color<span class="op">=</span><span class="st">&quot;grey&quot;</span>, ls<span class="op">=</span><span class="st">&quot;--&quot;</span>)</span>
-<span id="cb20-273"><a href="#cb20-273" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">&quot;Actual ($)&quot;</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">&quot;Predicted ($)&quot;</span>)</span>
-<span id="cb20-274"><a href="#cb20-274" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="ss">f&quot;Regression: </span><span class="sc">{</span>artifacts[<span class="st">&#39;regression&#39;</span>][<span class="st">&#39;best_model&#39;</span>]<span class="sc">}</span><span class="ss"> (hold-out)&quot;</span>)</span>
-<span id="cb20-275"><a href="#cb20-275" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span>
-<span id="cb20-276"><a href="#cb20-276" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb20-277"><a href="#cb20-277" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-280"><a href="#cb20-280" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
-<span id="cb20-281"><a href="#cb20-281" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: confusion</span></span>
-<span id="cb20-282"><a href="#cb20-282" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Best classification model — confusion matrix on the hold-out.&quot;</span></span>
-<span id="cb20-283"><a href="#cb20-283" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
-<span id="cb20-284"><a href="#cb20-284" aria-hidden="true" tabindex="-1"></a>cm <span class="op">=</span> np.array(artifacts[<span class="st">&quot;classification&quot;</span>][<span class="st">&quot;confusion_matrix&quot;</span>])</span>
-<span id="cb20-285"><a href="#cb20-285" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">4.2</span>, <span class="dv">4</span>))</span>
-<span id="cb20-286"><a href="#cb20-286" aria-hidden="true" tabindex="-1"></a>ax.imshow(cm, cmap<span class="op">=</span><span class="st">&quot;Oranges&quot;</span>)</span>
-<span id="cb20-287"><a href="#cb20-287" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i, j), v <span class="kw">in</span> np.ndenumerate(cm):</span>
-<span id="cb20-288"><a href="#cb20-288" aria-hidden="true" tabindex="-1"></a>    ax.text(j, i, <span class="bu">int</span>(v), ha<span class="op">=</span><span class="st">&quot;center&quot;</span>, va<span class="op">=</span><span class="st">&quot;center&quot;</span>, fontsize<span class="op">=</span><span class="dv">13</span>)</span>
-<span id="cb20-289"><a href="#cb20-289" aria-hidden="true" tabindex="-1"></a>ax.set_xticks([<span class="dv">0</span>, <span class="dv">1</span>], [<span class="st">&quot;Pred Normal&quot;</span>, <span class="st">&quot;Pred High&quot;</span>])</span>
-<span id="cb20-290"><a href="#cb20-290" aria-hidden="true" tabindex="-1"></a>ax.set_yticks([<span class="dv">0</span>, <span class="dv">1</span>], [<span class="st">&quot;Actual Normal&quot;</span>, <span class="st">&quot;Actual High&quot;</span>])</span>
-<span id="cb20-291"><a href="#cb20-291" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="ss">f&quot;Classification: </span><span class="sc">{</span>artifacts[<span class="st">&#39;classification&#39;</span>][<span class="st">&#39;best_model&#39;</span>]<span class="sc">}</span><span class="ss">&quot;</span>)</span>
-<span id="cb20-292"><a href="#cb20-292" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span>
-<span id="cb20-293"><a href="#cb20-293" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb20-294"><a href="#cb20-294" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-295"><a href="#cb20-295" aria-hidden="true" tabindex="-1"></a><span class="fu"># 6. Honest evaluation</span></span>
-<span id="cb20-296"><a href="#cb20-296" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-297"><a href="#cb20-297" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Report test performance, keep the baseline.** Every leaderboard row shows hold-out</span>
-<span id="cb20-298"><a href="#cb20-298" aria-hidden="true" tabindex="-1"></a>  metrics with the Dummy baseline retained. We do **not** quote training scores as results.</span>
-<span id="cb20-299"><a href="#cb20-299" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Overfitting is shown, not hidden.** The depth curve makes the train-vs-CV gap explicit;</span>
-<span id="cb20-300"><a href="#cb20-300" aria-hidden="true" tabindex="-1"></a>  the deeper trees memorise the training year and generalise worse.</span>
-<span id="cb20-301"><a href="#cb20-301" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Metric choice matters.** The majority-class classifier scores a deceptively high **F1</span>
-<span id="cb20-302"><a href="#cb20-302" aria-hidden="true" tabindex="-1"></a>  (0.60)** by predicting &quot;high&quot; for every day (perfect recall, no true negatives). Judged by</span>
-<span id="cb20-303"><a href="#cb20-303" aria-hidden="true" tabindex="-1"></a>  **ROC-AUC** — the threshold-independent metric — it sits at **0.50 (random)**, while</span>
-<span id="cb20-304"><a href="#cb20-304" aria-hidden="true" tabindex="-1"></a>  Logistic Regression reaches **0.74**. We therefore select and judge the classifier by AUC,</span>
-<span id="cb20-305"><a href="#cb20-305" aria-hidden="true" tabindex="-1"></a>  not F1.</span>
-<span id="cb20-306"><a href="#cb20-306" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**What we would and would not trust.** The classifier is a **useful &quot;busy day?&quot; signal**</span>
-<span id="cb20-307"><a href="#cb20-307" aria-hidden="true" tabindex="-1"></a>  for staffing (AUC ≈ 0.74 from the calendar alone). The revenue regressor explains only a</span>
-<span id="cb20-308"><a href="#cb20-308" aria-hidden="true" tabindex="-1"></a>  **modest share of daily variance** — daily revenue is noisy, and a single year limits how</span>
-<span id="cb20-309"><a href="#cb20-309" aria-hidden="true" tabindex="-1"></a>  far any model can generalise. We would use it for **rough planning, not financial</span>
-<span id="cb20-310"><a href="#cb20-310" aria-hidden="true" tabindex="-1"></a>  commitments**, and we would retrain as more years of data accrue.</span>
-<span id="cb20-311"><a href="#cb20-311" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**A feature we tried that did *not* help (reported, not hidden).** We added a leakage-safe</span>
-<span id="cb20-312"><a href="#cb20-312" aria-hidden="true" tabindex="-1"></a>  US-holiday and payday calendar (the <span class="in">`XGBoost (+holidays)`</span> row above). It moved cross-validated</span>
-<span id="cb20-313"><a href="#cb20-313" aria-hidden="true" tabindex="-1"></a>  R² only from 0.212 to 0.214 — noise — and was *worse* on the hold-out. The reason is concrete:</span>
-<span id="cb20-314"><a href="#cb20-314" aria-hidden="true" tabindex="-1"></a>  this restaurant&#39;s closed days (four October Mondays, two September days) don&#39;t line up with</span>
-<span id="cb20-315"><a href="#cb20-315" aria-hidden="true" tabindex="-1"></a>  public holidays — only 25 December does — so a holiday flag has almost nothing to predict</span>
-<span id="cb20-316"><a href="#cb20-316" aria-hidden="true" tabindex="-1"></a>  here. We kept the negative result and **did not deploy it**; a calendar of *this venue&#39;s own*</span>
-<span id="cb20-317"><a href="#cb20-317" aria-hidden="true" tabindex="-1"></a>  closures would be the useful version, which again points back to needing more of its data.</span>
-<span id="cb20-318"><a href="#cb20-318" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-319"><a href="#cb20-319" aria-hidden="true" tabindex="-1"></a><span class="fu">## Would more data help? A learning curve</span></span>
-<span id="cb20-320"><a href="#cb20-320" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-323"><a href="#cb20-323" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
-<span id="cb20-324"><a href="#cb20-324" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-learning</span></span>
-<span id="cb20-325"><a href="#cb20-325" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;XGBoost learning curve (TimeSeriesSplit). Train R² sits well above CV R² at every training size — a wide, persistent gap that does not close within one year of data.&quot;</span></span>
-<span id="cb20-326"><a href="#cb20-326" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
-<span id="cb20-327"><a href="#cb20-327" aria-hidden="true" tabindex="-1"></a>lc <span class="op">=</span> artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;learning_curve&quot;</span>]</span>
-<span id="cb20-328"><a href="#cb20-328" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">8</span>, <span class="fl">3.6</span>))</span>
-<span id="cb20-329"><a href="#cb20-329" aria-hidden="true" tabindex="-1"></a>ax.plot(lc[<span class="st">&quot;train_sizes&quot;</span>], lc[<span class="st">&quot;train_r2&quot;</span>], marker<span class="op">=</span><span class="st">&quot;o&quot;</span>, label<span class="op">=</span><span class="st">&quot;train R²&quot;</span>)</span>
-<span id="cb20-330"><a href="#cb20-330" aria-hidden="true" tabindex="-1"></a>ax.plot(lc[<span class="st">&quot;train_sizes&quot;</span>], lc[<span class="st">&quot;cv_r2&quot;</span>], marker<span class="op">=</span><span class="st">&quot;o&quot;</span>, label<span class="op">=</span><span class="st">&quot;CV R² (TimeSeriesSplit)&quot;</span>)</span>
-<span id="cb20-331"><a href="#cb20-331" aria-hidden="true" tabindex="-1"></a>ax.axhline(<span class="dv">0</span>, color<span class="op">=</span><span class="st">&quot;grey&quot;</span>, lw<span class="op">=</span><span class="fl">0.8</span>, ls<span class="op">=</span><span class="st">&quot;--&quot;</span>)</span>
-<span id="cb20-332"><a href="#cb20-332" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">&quot;training days used (per CV fold)&quot;</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">&quot;R²&quot;</span>)<span class="op">;</span> ax.legend()<span class="op">;</span> ax.grid(alpha<span class="op">=</span><span class="fl">0.3</span>)</span>
-<span id="cb20-333"><a href="#cb20-333" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">&quot;XGBoost — learning curve&quot;</span>)</span>
-<span id="cb20-334"><a href="#cb20-334" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span>
-<span id="cb20-335"><a href="#cb20-335" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb20-336"><a href="#cb20-336" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-337"><a href="#cb20-337" aria-hidden="true" tabindex="-1"></a>The train score stays well above the cross-validated score at **every** training size — a</span>
-<span id="cb20-338"><a href="#cb20-338" aria-hidden="true" tabindex="-1"></a>persistent gap of roughly 0.3–0.4 that the available data never closes, with CV R² holding in</span>
-<span id="cb20-339"><a href="#cb20-339" aria-hidden="true" tabindex="-1"></a>a modest, noisy band around 0.15. That wide, stubborn train–CV gap is the textbook signature of</span>
-<span id="cb20-340"><a href="#cb20-340" aria-hidden="true" tabindex="-1"></a>a **high-variance, data-limited** model: it has the capacity to fit, but not enough history to</span>
-<span id="cb20-341"><a href="#cb20-341" aria-hidden="true" tabindex="-1"></a>generalise. (The x-axis is short because TimeSeriesSplit&#39;s early folds train on few days; even</span>
-<span id="cb20-342"><a href="#cb20-342" aria-hidden="true" tabindex="-1"></a>so, the gap never narrows.) This is the honest, evidence-backed version of the</span>
-<span id="cb20-343"><a href="#cb20-343" aria-hidden="true" tabindex="-1"></a>&quot;invest in more data&quot; recommendation — more than a fancier model, more *history* is what would</span>
-<span id="cb20-344"><a href="#cb20-344" aria-hidden="true" tabindex="-1"></a>move the revenue forecast.</span>
-<span id="cb20-345"><a href="#cb20-345" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-346"><a href="#cb20-346" aria-hidden="true" tabindex="-1"></a><span class="fu"># 7. Business interpretation</span></span>
-<span id="cb20-347"><a href="#cb20-347" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-348"><a href="#cb20-348" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Weekends and Fridays are the demand peaks** — the weekly pattern is the strongest,</span>
-<span id="cb20-349"><a href="#cb20-349" aria-hidden="true" tabindex="-1"></a>  most reliable signal. Staff and stock to it.</span>
-<span id="cb20-350"><a href="#cb20-350" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**A simple calendar model already flags busy days** well enough to inform shift planning</span>
-<span id="cb20-351"><a href="#cb20-351" aria-hidden="true" tabindex="-1"></a>  (AUC ≈ 0.74), with no point-of-sale integration required.</span>
-<span id="cb20-352"><a href="#cb20-352" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Revenue forecasting needs more than the calendar.** Promotions, weather, and local</span>
-<span id="cb20-353"><a href="#cb20-353" aria-hidden="true" tabindex="-1"></a>  events likely drive the unexplained variance; capturing them is the clear next step.</span>
-<span id="cb20-354"><a href="#cb20-354" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**More history is the highest-value investment.** The single-year limitation — not the</span>
-<span id="cb20-355"><a href="#cb20-355" aria-hidden="true" tabindex="-1"></a>  model choice — is what caps accuracy here.</span>
-<span id="cb20-356"><a href="#cb20-356" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-357"><a href="#cb20-357" aria-hidden="true" tabindex="-1"></a><span class="fu">## Which features matter? (permutation importance)</span></span>
-<span id="cb20-358"><a href="#cb20-358" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-361"><a href="#cb20-361" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
-<span id="cb20-362"><a href="#cb20-362" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-importance</span></span>
-<span id="cb20-363"><a href="#cb20-363" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Permutation importance on the hold-out set — how much each feature actually moves the prediction. Confirms the weekly rhythm (weekend / day-of-week) is the dominant driver for both tasks.&quot;</span></span>
-<span id="cb20-364"><a href="#cb20-364" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
-<span id="cb20-365"><a href="#cb20-365" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-366"><a href="#cb20-366" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> _imp_ax(ax, ranked, title, color):</span>
-<span id="cb20-367"><a href="#cb20-367" aria-hidden="true" tabindex="-1"></a>    top <span class="op">=</span> ranked[:<span class="dv">8</span>][::<span class="op">-</span><span class="dv">1</span>]</span>
-<span id="cb20-368"><a href="#cb20-368" aria-hidden="true" tabindex="-1"></a>    ax.barh([d[<span class="st">&quot;feature&quot;</span>] <span class="cf">for</span> d <span class="kw">in</span> top], [d[<span class="st">&quot;importance&quot;</span>] <span class="cf">for</span> d <span class="kw">in</span> top], color<span class="op">=</span>color)</span>
-<span id="cb20-369"><a href="#cb20-369" aria-hidden="true" tabindex="-1"></a>    ax.set_title(title, fontsize<span class="op">=</span><span class="dv">11</span>)<span class="op">;</span> ax.tick_params(labelsize<span class="op">=</span><span class="dv">8</span>)</span>
-<span id="cb20-370"><a href="#cb20-370" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-371"><a href="#cb20-371" aria-hidden="true" tabindex="-1"></a>fig, axes <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="fl">3.8</span>))</span>
-<span id="cb20-372"><a href="#cb20-372" aria-hidden="true" tabindex="-1"></a>_imp_ax(axes[<span class="dv">0</span>], artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;permutation_importance&quot;</span>],</span>
-<span id="cb20-373"><a href="#cb20-373" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f&quot;Revenue — </span><span class="sc">{</span>artifacts[<span class="st">&#39;regression&#39;</span>][<span class="st">&#39;best_model&#39;</span>]<span class="sc">}</span><span class="ss">&quot;</span>, <span class="st">&quot;#ff4800&quot;</span>)</span>
-<span id="cb20-374"><a href="#cb20-374" aria-hidden="true" tabindex="-1"></a>_imp_ax(axes[<span class="dv">1</span>], artifacts[<span class="st">&quot;classification&quot;</span>][<span class="st">&quot;permutation_importance&quot;</span>],</span>
-<span id="cb20-375"><a href="#cb20-375" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f&quot;High-demand — </span><span class="sc">{</span>artifacts[<span class="st">&#39;classification&#39;</span>][<span class="st">&#39;best_model&#39;</span>]<span class="sc">}</span><span class="ss">&quot;</span>, <span class="st">&quot;#2360c4&quot;</span>)</span>
-<span id="cb20-376"><a href="#cb20-376" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()</span>
-<span id="cb20-377"><a href="#cb20-377" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span>
-<span id="cb20-378"><a href="#cb20-378" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb20-205"><a href="#cb20-205" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> []</span>
+<span id="cb20-206"><a href="#cb20-206" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> r <span class="kw">in</span> [r <span class="cf">for</span> r <span class="kw">in</span> rows <span class="cf">if</span> r[<span class="st">&quot;task&quot;</span>] <span class="op">==</span> <span class="st">&quot;regression&quot;</span>]:</span>
+<span id="cb20-207"><a href="#cb20-207" aria-hidden="true" tabindex="-1"></a>        out.append({</span>
+<span id="cb20-208"><a href="#cb20-208" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Model&quot;</span>: r[<span class="st">&quot;model&quot;</span>],</span>
+<span id="cb20-209"><a href="#cb20-209" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;CV R²&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;cv_r2&quot;</span>], <span class="dv">3</span>) <span class="cf">if</span> r[<span class="st">&quot;cv_r2&quot;</span>] <span class="kw">is</span> <span class="kw">not</span> <span class="va">None</span> <span class="cf">else</span> <span class="st">&quot;n/a&quot;</span>,</span>
+<span id="cb20-210"><a href="#cb20-210" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test R²&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;r2&quot;</span>], <span class="dv">3</span>),</span>
+<span id="cb20-211"><a href="#cb20-211" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test MAE&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;mae&quot;</span>], <span class="dv">1</span>),</span>
+<span id="cb20-212"><a href="#cb20-212" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test RMSE&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;rmse&quot;</span>], <span class="dv">1</span>),</span>
+<span id="cb20-213"><a href="#cb20-213" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Train R²&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;train_r2&quot;</span>], <span class="dv">3</span>) <span class="cf">if</span> r[<span class="st">&quot;train_r2&quot;</span>] <span class="kw">is</span> <span class="kw">not</span> <span class="va">None</span> <span class="cf">else</span> <span class="st">&quot;n/a&quot;</span>,</span>
+<span id="cb20-214"><a href="#cb20-214" aria-hidden="true" tabindex="-1"></a>        })</span>
+<span id="cb20-215"><a href="#cb20-215" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> pd.DataFrame(out)</span>
+<span id="cb20-216"><a href="#cb20-216" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-217"><a href="#cb20-217" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> clf_table(rows):</span>
+<span id="cb20-218"><a href="#cb20-218" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> [{<span class="st">&quot;Model&quot;</span>: r[<span class="st">&quot;model&quot;</span>], <span class="st">&quot;CV F1&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;cv_f1&quot;</span>], <span class="dv">3</span>),</span>
+<span id="cb20-219"><a href="#cb20-219" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test Acc&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;accuracy&quot;</span>], <span class="dv">3</span>), <span class="st">&quot;Test F1&quot;</span>: <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;f1&quot;</span>], <span class="dv">3</span>),</span>
+<span id="cb20-220"><a href="#cb20-220" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Test ROC-AUC&quot;</span>: (<span class="va">None</span> <span class="cf">if</span> r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;roc_auc&quot;</span>] <span class="kw">is</span> <span class="va">None</span> <span class="cf">else</span> <span class="bu">round</span>(r[<span class="st">&quot;test&quot;</span>][<span class="st">&quot;roc_auc&quot;</span>], <span class="dv">3</span>))}</span>
+<span id="cb20-221"><a href="#cb20-221" aria-hidden="true" tabindex="-1"></a>           <span class="cf">for</span> r <span class="kw">in</span> rows <span class="cf">if</span> r[<span class="st">&quot;task&quot;</span>] <span class="op">==</span> <span class="st">&quot;classification&quot;</span>]</span>
+<span id="cb20-222"><a href="#cb20-222" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> pd.DataFrame(out)</span>
+<span id="cb20-223"><a href="#cb20-223" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-224"><a href="#cb20-224" aria-hidden="true" tabindex="-1"></a>reg_table(leaderboard)</span>
+<span id="cb20-225"><a href="#cb20-225" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb20-226"><a href="#cb20-226" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-229"><a href="#cb20-229" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb20-230"><a href="#cb20-230" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: clf-leaderboard</span></span>
+<span id="cb20-231"><a href="#cb20-231" aria-hidden="true" tabindex="-1"></a>clf_table(leaderboard)</span>
+<span id="cb20-232"><a href="#cb20-232" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb20-233"><a href="#cb20-233" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-234"><a href="#cb20-234" aria-hidden="true" tabindex="-1"></a><span class="fu">## 5a. The key result: CV and the hold-out disagree — and why</span></span>
+<span id="cb20-235"><a href="#cb20-235" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-236"><a href="#cb20-236" aria-hidden="true" tabindex="-1"></a>This is the most important finding in the study, and it is a direct consequence of having</span>
+<span id="cb20-237"><a href="#cb20-237" aria-hidden="true" tabindex="-1"></a>**only one year of data**:</span>
+<span id="cb20-238"><a href="#cb20-238" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-239"><a href="#cb20-239" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>On **TimeSeriesSplit CV**, XGBoost is the best regressor (**CV R² ≈ 0.21**), clearly</span>
+<span id="cb20-240"><a href="#cb20-240" aria-hidden="true" tabindex="-1"></a>  beating the mean baseline (≈ 0).</span>
+<span id="cb20-241"><a href="#cb20-241" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>On the **Nov–Dec hold-out**, the tree models score **near-zero or negative** R².</span>
+<span id="cb20-242"><a href="#cb20-242" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-243"><a href="#cb20-243" aria-hidden="true" tabindex="-1"></a>The reason is **not** that the models are broken — it is that the hold-out months</span>
+<span id="cb20-244"><a href="#cb20-244" aria-hidden="true" tabindex="-1"></a>(November, December) are **calendar positions the model never saw in training** (Jan–Sep).</span>
+<span id="cb20-245"><a href="#cb20-245" aria-hidden="true" tabindex="-1"></a>Tree models cannot extrapolate <span class="in">`month`</span>/<span class="in">`week_of_year`</span> beyond their training range, so they</span>
+<span id="cb20-246"><a href="#cb20-246" aria-hidden="true" tabindex="-1"></a>fail precisely on the unseen tail; linear Ridge, which extrapolates, edges them out on that</span>
+<span id="cb20-247"><a href="#cb20-247" aria-hidden="true" tabindex="-1"></a>specific hold-out. With a single year, *any* future hold-out has this problem. We therefore</span>
+<span id="cb20-248"><a href="#cb20-248" aria-hidden="true" tabindex="-1"></a>**select the deployed model by the CV estimate** (the documented primary metric), giving</span>
+<span id="cb20-249"><a href="#cb20-249" aria-hidden="true" tabindex="-1"></a>**XGBoost** for revenue.</span>
+<span id="cb20-250"><a href="#cb20-250" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-253"><a href="#cb20-253" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb20-254"><a href="#cb20-254" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: depth-curve</span></span>
+<span id="cb20-255"><a href="#cb20-255" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Decision-tree validation curve. Train R² keeps rising while CV R² peaks early then collapses — textbook overfitting.&quot;</span></span>
+<span id="cb20-256"><a href="#cb20-256" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb20-257"><a href="#cb20-257" aria-hidden="true" tabindex="-1"></a>dc <span class="op">=</span> artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;depth_curve&quot;</span>]</span>
+<span id="cb20-258"><a href="#cb20-258" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">8</span>, <span class="fl">3.6</span>))</span>
+<span id="cb20-259"><a href="#cb20-259" aria-hidden="true" tabindex="-1"></a>ax.plot(dc[<span class="st">&quot;max_depth&quot;</span>], dc[<span class="st">&quot;train_r2&quot;</span>], marker<span class="op">=</span><span class="st">&quot;o&quot;</span>, label<span class="op">=</span><span class="st">&quot;train R²&quot;</span>)</span>
+<span id="cb20-260"><a href="#cb20-260" aria-hidden="true" tabindex="-1"></a>ax.plot(dc[<span class="st">&quot;max_depth&quot;</span>], dc[<span class="st">&quot;cv_r2&quot;</span>], marker<span class="op">=</span><span class="st">&quot;o&quot;</span>, label<span class="op">=</span><span class="st">&quot;CV R² (TimeSeriesSplit)&quot;</span>)</span>
+<span id="cb20-261"><a href="#cb20-261" aria-hidden="true" tabindex="-1"></a>ax.axhline(<span class="dv">0</span>, color<span class="op">=</span><span class="st">&quot;grey&quot;</span>, lw<span class="op">=</span><span class="fl">0.8</span>, ls<span class="op">=</span><span class="st">&quot;--&quot;</span>)</span>
+<span id="cb20-262"><a href="#cb20-262" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">&quot;max_depth&quot;</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">&quot;R²&quot;</span>)<span class="op">;</span> ax.legend()<span class="op">;</span> ax.grid(alpha<span class="op">=</span><span class="fl">0.3</span>)</span>
+<span id="cb20-263"><a href="#cb20-263" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">&quot;Decision tree: overfitting as depth grows&quot;</span>)</span>
+<span id="cb20-264"><a href="#cb20-264" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span>
+<span id="cb20-265"><a href="#cb20-265" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb20-266"><a href="#cb20-266" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-267"><a href="#cb20-267" aria-hidden="true" tabindex="-1"></a><span class="fu">## 5b. Predicted vs. actual, and the confusion matrix</span></span>
+<span id="cb20-268"><a href="#cb20-268" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-271"><a href="#cb20-271" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb20-272"><a href="#cb20-272" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: pred-actual</span></span>
+<span id="cb20-273"><a href="#cb20-273" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Best regression model — predicted vs. actual daily revenue on the hold-out.&quot;</span></span>
+<span id="cb20-274"><a href="#cb20-274" aria-hidden="true" tabindex="-1"></a>pva <span class="op">=</span> artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;predicted_vs_actual&quot;</span>]</span>
+<span id="cb20-275"><a href="#cb20-275" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">5</span>, <span class="dv">5</span>))</span>
+<span id="cb20-276"><a href="#cb20-276" aria-hidden="true" tabindex="-1"></a>ax.scatter(pva[<span class="st">&quot;actual&quot;</span>], pva[<span class="st">&quot;predicted&quot;</span>], alpha<span class="op">=</span><span class="fl">0.6</span>, color<span class="op">=</span><span class="st">&quot;#ff4800&quot;</span>)</span>
+<span id="cb20-277"><a href="#cb20-277" aria-hidden="true" tabindex="-1"></a>lim <span class="op">=</span> [<span class="bu">min</span>(pva[<span class="st">&quot;actual&quot;</span>]), <span class="bu">max</span>(pva[<span class="st">&quot;actual&quot;</span>])]</span>
+<span id="cb20-278"><a href="#cb20-278" aria-hidden="true" tabindex="-1"></a>ax.plot(lim, lim, color<span class="op">=</span><span class="st">&quot;grey&quot;</span>, ls<span class="op">=</span><span class="st">&quot;--&quot;</span>)</span>
+<span id="cb20-279"><a href="#cb20-279" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">&quot;Actual ($)&quot;</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">&quot;Predicted ($)&quot;</span>)</span>
+<span id="cb20-280"><a href="#cb20-280" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="ss">f&quot;Regression: </span><span class="sc">{</span>artifacts[<span class="st">&#39;regression&#39;</span>][<span class="st">&#39;best_model&#39;</span>]<span class="sc">}</span><span class="ss"> (hold-out)&quot;</span>)</span>
+<span id="cb20-281"><a href="#cb20-281" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span>
+<span id="cb20-282"><a href="#cb20-282" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb20-283"><a href="#cb20-283" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-286"><a href="#cb20-286" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb20-287"><a href="#cb20-287" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: confusion</span></span>
+<span id="cb20-288"><a href="#cb20-288" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Best classification model — confusion matrix on the hold-out.&quot;</span></span>
+<span id="cb20-289"><a href="#cb20-289" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb20-290"><a href="#cb20-290" aria-hidden="true" tabindex="-1"></a>cm <span class="op">=</span> np.array(artifacts[<span class="st">&quot;classification&quot;</span>][<span class="st">&quot;confusion_matrix&quot;</span>])</span>
+<span id="cb20-291"><a href="#cb20-291" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">4.2</span>, <span class="dv">4</span>))</span>
+<span id="cb20-292"><a href="#cb20-292" aria-hidden="true" tabindex="-1"></a>ax.imshow(cm, cmap<span class="op">=</span><span class="st">&quot;Oranges&quot;</span>)</span>
+<span id="cb20-293"><a href="#cb20-293" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i, j), v <span class="kw">in</span> np.ndenumerate(cm):</span>
+<span id="cb20-294"><a href="#cb20-294" aria-hidden="true" tabindex="-1"></a>    ax.text(j, i, <span class="bu">int</span>(v), ha<span class="op">=</span><span class="st">&quot;center&quot;</span>, va<span class="op">=</span><span class="st">&quot;center&quot;</span>, fontsize<span class="op">=</span><span class="dv">13</span>)</span>
+<span id="cb20-295"><a href="#cb20-295" aria-hidden="true" tabindex="-1"></a>ax.set_xticks([<span class="dv">0</span>, <span class="dv">1</span>], [<span class="st">&quot;Pred Normal&quot;</span>, <span class="st">&quot;Pred High&quot;</span>])</span>
+<span id="cb20-296"><a href="#cb20-296" aria-hidden="true" tabindex="-1"></a>ax.set_yticks([<span class="dv">0</span>, <span class="dv">1</span>], [<span class="st">&quot;Actual Normal&quot;</span>, <span class="st">&quot;Actual High&quot;</span>])</span>
+<span id="cb20-297"><a href="#cb20-297" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="ss">f&quot;Classification: </span><span class="sc">{</span>artifacts[<span class="st">&#39;classification&#39;</span>][<span class="st">&#39;best_model&#39;</span>]<span class="sc">}</span><span class="ss">&quot;</span>)</span>
+<span id="cb20-298"><a href="#cb20-298" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span>
+<span id="cb20-299"><a href="#cb20-299" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb20-300"><a href="#cb20-300" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-301"><a href="#cb20-301" aria-hidden="true" tabindex="-1"></a><span class="fu"># 6. Honest evaluation</span></span>
+<span id="cb20-302"><a href="#cb20-302" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-303"><a href="#cb20-303" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Report test performance, keep the baseline.** Every leaderboard row shows hold-out</span>
+<span id="cb20-304"><a href="#cb20-304" aria-hidden="true" tabindex="-1"></a>  metrics with the Dummy baseline retained. We do **not** quote training scores as results.</span>
+<span id="cb20-305"><a href="#cb20-305" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Overfitting is shown, not hidden.** The depth curve makes the train-vs-CV gap explicit;</span>
+<span id="cb20-306"><a href="#cb20-306" aria-hidden="true" tabindex="-1"></a>  the deeper trees memorise the training year and generalise worse.</span>
+<span id="cb20-307"><a href="#cb20-307" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Metric choice matters.** The majority-class classifier scores a deceptively high **F1</span>
+<span id="cb20-308"><a href="#cb20-308" aria-hidden="true" tabindex="-1"></a>  (0.60)** by predicting &quot;high&quot; for every day (perfect recall, no true negatives). Judged by</span>
+<span id="cb20-309"><a href="#cb20-309" aria-hidden="true" tabindex="-1"></a>  **ROC-AUC** — the threshold-independent metric — it sits at **0.50 (random)**, while</span>
+<span id="cb20-310"><a href="#cb20-310" aria-hidden="true" tabindex="-1"></a>  Logistic Regression reaches **0.74**. We therefore select and judge the classifier by AUC,</span>
+<span id="cb20-311"><a href="#cb20-311" aria-hidden="true" tabindex="-1"></a>  not F1.</span>
+<span id="cb20-312"><a href="#cb20-312" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**What we would and would not trust.** The classifier is a **useful &quot;busy day?&quot; signal**</span>
+<span id="cb20-313"><a href="#cb20-313" aria-hidden="true" tabindex="-1"></a>  for staffing (AUC ≈ 0.74 from the calendar alone). The revenue regressor explains only a</span>
+<span id="cb20-314"><a href="#cb20-314" aria-hidden="true" tabindex="-1"></a>  **modest share of daily variance** — daily revenue is noisy, and a single year limits how</span>
+<span id="cb20-315"><a href="#cb20-315" aria-hidden="true" tabindex="-1"></a>  far any model can generalise. We would use it for **rough planning, not financial</span>
+<span id="cb20-316"><a href="#cb20-316" aria-hidden="true" tabindex="-1"></a>  commitments**, and we would retrain as more years of data accrue.</span>
+<span id="cb20-317"><a href="#cb20-317" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**A feature we tried that did *not* help (reported, not hidden).** We added a leakage-safe</span>
+<span id="cb20-318"><a href="#cb20-318" aria-hidden="true" tabindex="-1"></a>  US-holiday and payday calendar (the <span class="in">`XGBoost (+holidays)`</span> row above). It moved cross-validated</span>
+<span id="cb20-319"><a href="#cb20-319" aria-hidden="true" tabindex="-1"></a>  R² only from 0.212 to 0.214 — noise — and was *worse* on the hold-out. The reason is concrete:</span>
+<span id="cb20-320"><a href="#cb20-320" aria-hidden="true" tabindex="-1"></a>  this restaurant&#39;s closed days (four October Mondays, two September days) don&#39;t line up with</span>
+<span id="cb20-321"><a href="#cb20-321" aria-hidden="true" tabindex="-1"></a>  public holidays — only 25 December does — so a holiday flag has almost nothing to predict</span>
+<span id="cb20-322"><a href="#cb20-322" aria-hidden="true" tabindex="-1"></a>  here. We kept the negative result and **did not deploy it**; a calendar of *this venue&#39;s own*</span>
+<span id="cb20-323"><a href="#cb20-323" aria-hidden="true" tabindex="-1"></a>  closures would be the useful version, which again points back to needing more of its data.</span>
+<span id="cb20-324"><a href="#cb20-324" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**A time-series paradigm comparison: SARIMA.** At the course instructor&#39;s suggestion, we</span>
+<span id="cb20-325"><a href="#cb20-325" aria-hidden="true" tabindex="-1"></a>  added a classical **SARIMA(p,d,q)(P,D,Q)[7]** model as a fifth regression comparison row</span>
+<span id="cb20-326"><a href="#cb20-326" aria-hidden="true" tabindex="-1"></a>  (auto-selected via <span class="in">`pmdarima.auto_arima`</span>, seasonal period m = 7 for the weekly cycle).</span>
+<span id="cb20-327"><a href="#cb20-327" aria-hidden="true" tabindex="-1"></a>  SARIMA explicitly models autocorrelation and weekly seasonality — the same weekly pattern</span>
+<span id="cb20-328"><a href="#cb20-328" aria-hidden="true" tabindex="-1"></a>  that XGBoost approximates via cyclical day-of-week encoding. The model was fitted on the</span>
+<span id="cb20-329"><a href="#cb20-329" aria-hidden="true" tabindex="-1"></a>  training series (Jan–Sep only) and generated a **pure out-of-sample 92-day forecast** evaluated</span>
+<span id="cb20-330"><a href="#cb20-330" aria-hidden="true" tabindex="-1"></a>  on the same Nov–Dec hold-out as every other model. No future data entered the fit.</span>
+<span id="cb20-331"><a href="#cb20-331" aria-hidden="true" tabindex="-1"></a>  Result: **test R² = −0.005 — essentially tied with the Dummy baseline.** This is the</span>
+<span id="cb20-332"><a href="#cb20-332" aria-hidden="true" tabindex="-1"></a>  expected outcome for a 92-day ARIMA horizon trained on a single year: error accumulates over</span>
+<span id="cb20-333"><a href="#cb20-333" aria-hidden="true" tabindex="-1"></a>  long forecast windows, and 52 weekly cycles is insufficient for robust seasonal parameter</span>
+<span id="cb20-334"><a href="#cb20-334" aria-hidden="true" tabindex="-1"></a>  estimation. The finding confirms that the cyclical encoding in XGBoost extracts as much</span>
+<span id="cb20-335"><a href="#cb20-335" aria-hidden="true" tabindex="-1"></a>  predictive signal from this dataset as a classical time-series model — and with the decisive</span>
+<span id="cb20-336"><a href="#cb20-336" aria-hidden="true" tabindex="-1"></a>  advantage of being deployable from a bare date, which ARIMA (requiring the observed series</span>
+<span id="cb20-337"><a href="#cb20-337" aria-hidden="true" tabindex="-1"></a>  at inference time) cannot match. SARIMA is included as a **report-only** comparison row; it</span>
+<span id="cb20-338"><a href="#cb20-338" aria-hidden="true" tabindex="-1"></a>  does not affect model selection or the live predictor.</span>
+<span id="cb20-339"><a href="#cb20-339" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-340"><a href="#cb20-340" aria-hidden="true" tabindex="-1"></a><span class="fu">## Would more data help? A learning curve</span></span>
+<span id="cb20-341"><a href="#cb20-341" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-344"><a href="#cb20-344" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb20-345"><a href="#cb20-345" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-learning</span></span>
+<span id="cb20-346"><a href="#cb20-346" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;XGBoost learning curve (TimeSeriesSplit). Train R² sits well above CV R² at every training size — a wide, persistent gap that does not close within one year of data.&quot;</span></span>
+<span id="cb20-347"><a href="#cb20-347" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb20-348"><a href="#cb20-348" aria-hidden="true" tabindex="-1"></a>lc <span class="op">=</span> artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;learning_curve&quot;</span>]</span>
+<span id="cb20-349"><a href="#cb20-349" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">8</span>, <span class="fl">3.6</span>))</span>
+<span id="cb20-350"><a href="#cb20-350" aria-hidden="true" tabindex="-1"></a>ax.plot(lc[<span class="st">&quot;train_sizes&quot;</span>], lc[<span class="st">&quot;train_r2&quot;</span>], marker<span class="op">=</span><span class="st">&quot;o&quot;</span>, label<span class="op">=</span><span class="st">&quot;train R²&quot;</span>)</span>
+<span id="cb20-351"><a href="#cb20-351" aria-hidden="true" tabindex="-1"></a>ax.plot(lc[<span class="st">&quot;train_sizes&quot;</span>], lc[<span class="st">&quot;cv_r2&quot;</span>], marker<span class="op">=</span><span class="st">&quot;o&quot;</span>, label<span class="op">=</span><span class="st">&quot;CV R² (TimeSeriesSplit)&quot;</span>)</span>
+<span id="cb20-352"><a href="#cb20-352" aria-hidden="true" tabindex="-1"></a>ax.axhline(<span class="dv">0</span>, color<span class="op">=</span><span class="st">&quot;grey&quot;</span>, lw<span class="op">=</span><span class="fl">0.8</span>, ls<span class="op">=</span><span class="st">&quot;--&quot;</span>)</span>
+<span id="cb20-353"><a href="#cb20-353" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">&quot;training days used (per CV fold)&quot;</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">&quot;R²&quot;</span>)<span class="op">;</span> ax.legend()<span class="op">;</span> ax.grid(alpha<span class="op">=</span><span class="fl">0.3</span>)</span>
+<span id="cb20-354"><a href="#cb20-354" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">&quot;XGBoost — learning curve&quot;</span>)</span>
+<span id="cb20-355"><a href="#cb20-355" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span>
+<span id="cb20-356"><a href="#cb20-356" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb20-357"><a href="#cb20-357" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-358"><a href="#cb20-358" aria-hidden="true" tabindex="-1"></a>The train score stays well above the cross-validated score at **every** training size — a</span>
+<span id="cb20-359"><a href="#cb20-359" aria-hidden="true" tabindex="-1"></a>persistent gap of roughly 0.3–0.4 that the available data never closes, with CV R² holding in</span>
+<span id="cb20-360"><a href="#cb20-360" aria-hidden="true" tabindex="-1"></a>a modest, noisy band around 0.15. That wide, stubborn train–CV gap is the textbook signature of</span>
+<span id="cb20-361"><a href="#cb20-361" aria-hidden="true" tabindex="-1"></a>a **high-variance, data-limited** model: it has the capacity to fit, but not enough history to</span>
+<span id="cb20-362"><a href="#cb20-362" aria-hidden="true" tabindex="-1"></a>generalise. (The x-axis is short because TimeSeriesSplit&#39;s early folds train on few days; even</span>
+<span id="cb20-363"><a href="#cb20-363" aria-hidden="true" tabindex="-1"></a>so, the gap never narrows.) This is the honest, evidence-backed version of the</span>
+<span id="cb20-364"><a href="#cb20-364" aria-hidden="true" tabindex="-1"></a>&quot;invest in more data&quot; recommendation — more than a fancier model, more *history* is what would</span>
+<span id="cb20-365"><a href="#cb20-365" aria-hidden="true" tabindex="-1"></a>move the revenue forecast.</span>
+<span id="cb20-366"><a href="#cb20-366" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-367"><a href="#cb20-367" aria-hidden="true" tabindex="-1"></a><span class="fu"># 7. Business interpretation</span></span>
+<span id="cb20-368"><a href="#cb20-368" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-369"><a href="#cb20-369" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Weekends and Fridays are the demand peaks** — the weekly pattern is the strongest,</span>
+<span id="cb20-370"><a href="#cb20-370" aria-hidden="true" tabindex="-1"></a>  most reliable signal. Staff and stock to it.</span>
+<span id="cb20-371"><a href="#cb20-371" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**A simple calendar model already flags busy days** well enough to inform shift planning</span>
+<span id="cb20-372"><a href="#cb20-372" aria-hidden="true" tabindex="-1"></a>  (AUC ≈ 0.74), with no point-of-sale integration required.</span>
+<span id="cb20-373"><a href="#cb20-373" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Revenue forecasting needs more than the calendar.** Promotions, weather, and local</span>
+<span id="cb20-374"><a href="#cb20-374" aria-hidden="true" tabindex="-1"></a>  events likely drive the unexplained variance; capturing them is the clear next step.</span>
+<span id="cb20-375"><a href="#cb20-375" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**More history is the highest-value investment.** The single-year limitation — not the</span>
+<span id="cb20-376"><a href="#cb20-376" aria-hidden="true" tabindex="-1"></a>  model choice — is what caps accuracy here.</span>
+<span id="cb20-377"><a href="#cb20-377" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-378"><a href="#cb20-378" aria-hidden="true" tabindex="-1"></a><span class="fu">## Which features matter? (permutation importance)</span></span>
 <span id="cb20-379"><a href="#cb20-379" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-380"><a href="#cb20-380" aria-hidden="true" tabindex="-1"></a>The features that most move the predictions are the **weekend flag and the day-of-week</span>
-<span id="cb20-381"><a href="#cb20-381" aria-hidden="true" tabindex="-1"></a>encodings** — direct evidence for the headline claim that *the weekly rhythm is the strongest,</span>
-<span id="cb20-382"><a href="#cb20-382" aria-hidden="true" tabindex="-1"></a>most reliable signal*. (Permutation importance is computed on the hold-out set and is</span>
-<span id="cb20-383"><a href="#cb20-383" aria-hidden="true" tabindex="-1"></a>report-only; it does not influence model selection or the deployed models.)</span>
-<span id="cb20-384"><a href="#cb20-384" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-385"><a href="#cb20-385" aria-hidden="true" tabindex="-1"></a>---</span>
+<span id="cb20-382"><a href="#cb20-382" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb20-383"><a href="#cb20-383" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: fig-importance</span></span>
+<span id="cb20-384"><a href="#cb20-384" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig-cap: &quot;Permutation importance on the hold-out set — how much each feature actually moves the prediction. Confirms the weekly rhythm (weekend / day-of-week) is the dominant driver for both tasks.&quot;</span></span>
+<span id="cb20-385"><a href="#cb20-385" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
 <span id="cb20-386"><a href="#cb20-386" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-387"><a href="#cb20-387" aria-hidden="true" tabindex="-1"></a>*Reproducibility: every figure and number above is produced by executed code in this</span>
-<span id="cb20-388"><a href="#cb20-388" aria-hidden="true" tabindex="-1"></a>document, from the committed data and the seeded (<span class="in">`RANDOM_SEED = 42`</span>) pipeline in <span class="in">`src/`</span>.</span>
-<span id="cb20-389"><a href="#cb20-389" aria-hidden="true" tabindex="-1"></a>Run <span class="in">`quarto render report.qmd`</span> from a clean checkout to regenerate.*</span>
+<span id="cb20-387"><a href="#cb20-387" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> _imp_ax(ax, ranked, title, color):</span>
+<span id="cb20-388"><a href="#cb20-388" aria-hidden="true" tabindex="-1"></a>    top <span class="op">=</span> ranked[:<span class="dv">8</span>][::<span class="op">-</span><span class="dv">1</span>]</span>
+<span id="cb20-389"><a href="#cb20-389" aria-hidden="true" tabindex="-1"></a>    ax.barh([d[<span class="st">&quot;feature&quot;</span>] <span class="cf">for</span> d <span class="kw">in</span> top], [d[<span class="st">&quot;importance&quot;</span>] <span class="cf">for</span> d <span class="kw">in</span> top], color<span class="op">=</span>color)</span>
+<span id="cb20-390"><a href="#cb20-390" aria-hidden="true" tabindex="-1"></a>    ax.set_title(title, fontsize<span class="op">=</span><span class="dv">11</span>)<span class="op">;</span> ax.tick_params(labelsize<span class="op">=</span><span class="dv">8</span>)</span>
+<span id="cb20-391"><a href="#cb20-391" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-392"><a href="#cb20-392" aria-hidden="true" tabindex="-1"></a>fig, axes <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="fl">3.8</span>))</span>
+<span id="cb20-393"><a href="#cb20-393" aria-hidden="true" tabindex="-1"></a>_imp_ax(axes[<span class="dv">0</span>], artifacts[<span class="st">&quot;regression&quot;</span>][<span class="st">&quot;permutation_importance&quot;</span>],</span>
+<span id="cb20-394"><a href="#cb20-394" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f&quot;Revenue — </span><span class="sc">{</span>artifacts[<span class="st">&#39;regression&#39;</span>][<span class="st">&#39;best_model&#39;</span>]<span class="sc">}</span><span class="ss">&quot;</span>, <span class="st">&quot;#ff4800&quot;</span>)</span>
+<span id="cb20-395"><a href="#cb20-395" aria-hidden="true" tabindex="-1"></a>_imp_ax(axes[<span class="dv">1</span>], artifacts[<span class="st">&quot;classification&quot;</span>][<span class="st">&quot;permutation_importance&quot;</span>],</span>
+<span id="cb20-396"><a href="#cb20-396" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f&quot;High-demand — </span><span class="sc">{</span>artifacts[<span class="st">&#39;classification&#39;</span>][<span class="st">&#39;best_model&#39;</span>]<span class="sc">}</span><span class="ss">&quot;</span>, <span class="st">&quot;#2360c4&quot;</span>)</span>
+<span id="cb20-397"><a href="#cb20-397" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()</span>
+<span id="cb20-398"><a href="#cb20-398" aria-hidden="true" tabindex="-1"></a>fig<span class="op">;</span></span>
+<span id="cb20-399"><a href="#cb20-399" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb20-400"><a href="#cb20-400" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-401"><a href="#cb20-401" aria-hidden="true" tabindex="-1"></a>The features that most move the predictions are the **weekend flag and the day-of-week</span>
+<span id="cb20-402"><a href="#cb20-402" aria-hidden="true" tabindex="-1"></a>encodings** — direct evidence for the headline claim that *the weekly rhythm is the strongest,</span>
+<span id="cb20-403"><a href="#cb20-403" aria-hidden="true" tabindex="-1"></a>most reliable signal*. (Permutation importance is computed on the hold-out set and is</span>
+<span id="cb20-404"><a href="#cb20-404" aria-hidden="true" tabindex="-1"></a>report-only; it does not influence model selection or the deployed models.)</span>
+<span id="cb20-405"><a href="#cb20-405" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-406"><a href="#cb20-406" aria-hidden="true" tabindex="-1"></a>---</span>
+<span id="cb20-407"><a href="#cb20-407" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-408"><a href="#cb20-408" aria-hidden="true" tabindex="-1"></a>*Reproducibility: every figure and number above is produced by executed code in this</span>
+<span id="cb20-409"><a href="#cb20-409" aria-hidden="true" tabindex="-1"></a>document, from the committed data and the seeded (<span class="in">`RANDOM_SEED = 42`</span>) pipeline in <span class="in">`src/`</span>.</span>
+<span id="cb20-410"><a href="#cb20-410" aria-hidden="true" tabindex="-1"></a>Run <span class="in">`quarto render report.qmd`</span> from a clean checkout to regenerate.*</span>
 </code></pre></div><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal><i class="bi"></i></button></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
