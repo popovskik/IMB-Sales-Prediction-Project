@@ -60,11 +60,20 @@ def build_payload() -> dict:
     report_art = json.loads((MODELS_DIR / "report_artifacts.json").read_text(encoding="utf-8"))
     reg_art = report_art.get("regression", {})
     clf_art = report_art.get("classification", {})
+    # Merge SARIMA forecast into the regression predicted-vs-actual bundle so the
+    # dashboard can plot all three series (actual / XGBoost / SARIMA) on one chart.
+    pva = reg_art.get("predicted_vs_actual") or {}
+    sarima = reg_art.get("sarima") or {}
+    reg_diagnostics = {
+        "best_model": reg_art.get("best_model"),
+        "predicted_vs_actual": {
+            **pva,
+            "sarima_predicted": sarima.get("forecast_predicted"),
+        } if pva else None,
+    }
+
     model_diagnostics = {
-        "regression": {
-            "best_model": reg_art.get("best_model"),
-            "predicted_vs_actual": reg_art.get("predicted_vs_actual"),
-        },
+        "regression": reg_diagnostics,
         "classification": {
             "best_model": clf_art.get("best_model"),
             "confusion_matrix": clf_art.get("confusion_matrix"),

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import {
-  CartesianGrid, Line, LineChart, ResponsiveContainer,
-  Scatter, ScatterChart, Tooltip, XAxis, YAxis,
+  CartesianGrid, Legend, Line, LineChart, ResponsiveContainer,
+  Tooltip, XAxis, YAxis,
 } from "recharts";
 import type { LeaderboardRow, ModelDiagnostics, Predictions } from "../types";
 import { InfoTip } from "./InfoTip";
@@ -112,10 +112,15 @@ const BLUE = "#2360c4";
 function DiagnosticsRow({ diagnostics }: { diagnostics: ModelDiagnostics }) {
   const { regression, classification } = diagnostics;
 
-  // Build scatter data for predicted vs actual
+  // Build time-series data: actual / XGBoost / SARIMA for Nov-Dec
   const pva = regression.predicted_vs_actual;
   const pvaData = pva
-    ? pva.actual.map((a, i) => ({ actual: Math.round(a), predicted: Math.round(pva.predicted[i]) }))
+    ? pva.dates.map((d, i) => ({
+        date: d.slice(5),  // "MM-DD"
+        actual: Math.round(pva.actual[i]),
+        xgb: Math.round(pva.predicted[i]),
+        sarima: pva.sarima_predicted ? Math.round(pva.sarima_predicted[i]) : undefined,
+      }))
     : null;
 
   // Build ROC curve points
@@ -130,36 +135,33 @@ function DiagnosticsRow({ diagnostics }: { diagnostics: ModelDiagnostics }) {
       <h3 style={{ fontSize: 14, margin: "0 0 12px" }}>Model visualisations</h3>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
 
-        {/* Predicted vs actual scatter */}
+        {/* Nov-Dec forecast comparison: Actual vs XGBoost vs SARIMA */}
         <div>
           <div style={{ fontWeight: 600, fontSize: 13, color: "var(--ink-2)", marginBottom: 6, display: "flex", alignItems: "center" }}>
-            Predicted vs actual revenue
+            Nov–Dec revenue forecast
             <InfoTip placement="bottom">
-              <>Each point is one <strong>Nov–Dec hold-out day</strong>. A perfect model
-              would put every point on the grey diagonal. Scatter above/below shows where the model
-              over- or under-predicts.</>
+              <>Daily revenue on the <strong>Nov–Dec hold-out</strong>. Grey = actual,
+              orange = XGBoost (calendar features only), blue dashed = SARIMA (time-series model).
+              Both models track the weekly rhythm but miss the absolute level — consistent
+              with near-zero test R².</>
             </InfoTip>
           </div>
           {pvaData ? (
             <ResponsiveContainer width="100%" height={200}>
-              <ScatterChart margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
+              <LineChart data={pvaData} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--line-soft)" />
-                <XAxis dataKey="actual" type="number" name="Actual" fontSize={11}
-                       tickFormatter={(v: number) => `$${Math.round(v / 1000)}k`}
-                       label={{ value: "Actual ($)", position: "insideBottom", offset: -2, fontSize: 11 }} />
-                <YAxis dataKey="predicted" type="number" name="Predicted" fontSize={11}
-                       tickFormatter={(v: number) => `$${Math.round(v / 1000)}k`}
-                       label={{ value: "Predicted", angle: -90, position: "insideLeft", offset: 8, fontSize: 11 }} />
-                <Tooltip
-                  formatter={(v: number, name: string) => [`$${v.toLocaleString()}`, name]}
-                  cursor={{ strokeDasharray: "3 3" }}
-                />
-                <Scatter data={pvaData} fill={ORANGE} opacity={0.7} />
-              </ScatterChart>
+                <XAxis dataKey="date" fontSize={10} interval={13} />
+                <YAxis fontSize={11} width={46} tickFormatter={(v: number) => `$${Math.round(v / 1000)}k`} />
+                <Tooltip formatter={(v: number, name: string) => [`$${v.toLocaleString()}`, name]} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Line type="monotone" dataKey="actual" name="Actual" stroke="#555" strokeWidth={1.5} dot={false} />
+                <Line type="monotone" dataKey="xgb" name="XGBoost" stroke={ORANGE} strokeWidth={1.5} strokeDasharray="4 2" dot={false} />
+                <Line type="monotone" dataKey="sarima" name="SARIMA" stroke={BLUE} strokeWidth={1.5} strokeDasharray="2 3" dot={false} />
+              </LineChart>
             </ResponsiveContainer>
           ) : <span style={{ color: "var(--ink-3)", fontSize: 13 }}>No data.</span>}
           <p style={{ fontSize: 12, color: "var(--ink-3)", margin: "4px 0 0" }}>
-            Best regression model — {regression.best_model ?? ""}
+            {regression.best_model ?? ""} vs SARIMA — 61-day hold-out
           </p>
         </div>
 

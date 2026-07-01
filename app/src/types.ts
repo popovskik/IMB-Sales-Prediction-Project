@@ -39,7 +39,12 @@ export interface Charts {
 export interface ModelDiagnostics {
   regression: {
     best_model: string | null;
-    predicted_vs_actual: { dates: string[]; actual: number[]; predicted: number[] } | null;
+    predicted_vs_actual: {
+      dates: string[];
+      actual: number[];
+      predicted: number[];
+      sarima_predicted: number[] | null;
+    } | null;
   };
   classification: {
     best_model: string | null;
