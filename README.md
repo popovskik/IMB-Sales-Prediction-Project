@@ -66,7 +66,7 @@ python -m venv .venv && .venv/Scripts/activate
 pip install -r requirements.txt
 
 # (b) run the tests (data-integrity + leakage guards + model checks)
-pytest                       # 42 tests
+pytest                       # 49 tests
 
 # (c) rebuild every artifact in one command (data -> train -> predictions.json,
 #     and sync the models into api/ for deploy). Add --report to also render the report.

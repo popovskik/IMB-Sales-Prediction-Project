@@ -22,7 +22,7 @@
 
 I treated generated code as a draft to be proven, not trusted:
 
-- **48 automated tests** across the analysis pipeline and the API, including leakage guards
+- **49 automated tests** across the analysis pipeline and the API, including leakage guards
   (lag features use only past data; scalers fit on the training split only), a
   reproducibility check (seed 42), and an **offline-vs-online feature-parity test** that
   compares the API's vendored feature code against the analysis source.
