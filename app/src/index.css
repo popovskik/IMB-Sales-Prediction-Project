@@ -100,7 +100,11 @@ tr.best td { background: var(--orange-soft); font-weight: 600; }
   gap: 24px 28px;
   align-items: start;
 }
-@media (max-width: 720px) { .eda-grid { grid-template-columns: 1fr; } }
+/* min-width: 0 lets each panel shrink below its chart's intrinsic width —
+   without it, iOS Safari lets the recharts SVGs force the column (and the
+   whole card) wider than the viewport. */
+.eda-grid > div { min-width: 0; }
+@media (max-width: 720px) { .eda-grid { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---- Info tooltip (hover/focus bubble explaining a number or concept) ---- */
 .infotip { position: relative; display: inline-flex; align-items: center; margin-left: 6px; cursor: help; vertical-align: middle; }
@@ -133,9 +137,13 @@ tr.best td { background: var(--orange-soft); font-weight: 600; }
 /* ---- Model diagnostics 3-up grid — collapses to 1 col on mobile ---- */
 .diagnostics-panels {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
+.diagnostics-panels > div { min-width: 0; }
 @media (max-width: 720px) {
-  .diagnostics-panels { grid-template-columns: 1fr; }
+  .diagnostics-panels { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Safety net: a recharts chart may never render wider than its panel. */
+.recharts-responsive-container { min-width: 0; max-width: 100%; }

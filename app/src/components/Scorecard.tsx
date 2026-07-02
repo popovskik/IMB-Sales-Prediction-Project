@@ -236,7 +236,9 @@ function ConfusionMatrix({ cm }: { cm: number[][] }) {
   const labels = ["Normal", "High demand"];
   const max = Math.max(...cm.flat(), 1);
   return (
-    <table style={{ borderCollapse: "separate", borderSpacing: 4, margin: "0 auto" }}>
+    // width: auto beats the global `table { width: 100% }`, which otherwise
+    // stretches the label column and shoves the cells to the right edge.
+    <table style={{ borderCollapse: "separate", borderSpacing: 4, margin: "0 auto", width: "auto" }}>
       <thead>
         <tr>
           <th style={{ fontSize: 10, color: "var(--ink-3)", padding: "0 6px 4px", textAlign: "right" }}>
