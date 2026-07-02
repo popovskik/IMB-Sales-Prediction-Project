@@ -1,7 +1,7 @@
 ---
 title: "Restaurant Demand Analytics: Predicting Daily Revenue and High-Demand Days"
 subtitle: "IMB MADA 2026 — End-to-End Machine Learning Capstone"
-author: "Aleksandar Popovski"
+author: "Kristijan Popovski"
 date: 2026-06-27
 format:
   html:

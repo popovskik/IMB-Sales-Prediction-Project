@@ -1,7 +1,7 @@
 ---
 title: "Restaurant Demand Analytics"
 subtitle: "Predicting daily revenue and busy days from one year of pizza orders"
-author: "Aleksandar Popovski · IMB MADA 2026"
+author: "Kristijan Popovski · IMB MADA 2026"
 format:
   revealjs:
     theme: simple
