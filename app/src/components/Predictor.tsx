@@ -5,6 +5,22 @@ import { InfoTip } from "./InfoTip";
 
 type Status = "idle" | "loading" | "live" | "fallback";
 
+const iso = (d: Date) => d.toISOString().slice(0, 10);
+
+/** Quick-pick dates: real planning dates (today / next Friday) exercise the
+ *  model's any-future-date extrapolation; the 2015 Friday stays inside the
+ *  training year and works offline via the baked predictions. */
+function quickPicks(): { label: string; date: string }[] {
+  const today = new Date();
+  const nextFriday = new Date(today);
+  nextFriday.setDate(today.getDate() + ((5 - today.getDay() + 7) % 7 || 7));
+  return [
+    { label: "Today", date: iso(today) },
+    { label: "Next Friday", date: iso(nextFriday) },
+    { label: "Fri, Jul 3 '15", date: "2015-07-03" },
+  ];
+}
+
 export function Predictor({ daily }: { daily: DailyRecord[] }) {
   const [date, setDate] = useState("2015-07-03");
   const [status, setStatus] = useState<Status>("idle");
@@ -37,7 +53,7 @@ export function Predictor({ daily }: { daily: DailyRecord[] }) {
       } else {
         setResult(null);
         setStatus("fallback");
-        setNote("Live predictor is unavailable and no pre-computed value exists for that date. Try a 2015 date.");
+        setNote("Live predictor is unavailable, and pre-computed estimates only cover 2015. Retry in a moment, or pick a 2015 date.");
       }
     } finally {
       if (slowTimer.current) { clearTimeout(slowTimer.current); slowTimer.current = null; }
@@ -48,14 +64,18 @@ export function Predictor({ daily }: { daily: DailyRecord[] }) {
   return (
     <section className="card">
       <div className="eyebrow">Predictor</div>
-      <h2 style={{ fontSize: 20, margin: "4px 0 16px" }}>Forecast a day</h2>
+      <h2 style={{ fontSize: 20, margin: "4px 0 6px" }}>Forecast a day</h2>
+      <p style={{ color: "var(--ink-2)", fontSize: 13, margin: "0 0 14px" }}>
+        Pick any date — past or future. The model needs only the calendar, so it can forecast
+        next Friday as easily as a 2015 day (future dates carry an extrapolation note).
+      </p>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <input
           type="date"
           value={date}
           min="2015-01-01"
-          max="2015-12-31"
+          max="2027-12-31"
           onChange={(e) => setDate(e.target.value)}
           aria-label="Date to forecast"
         />
@@ -63,6 +83,25 @@ export function Predictor({ daily }: { daily: DailyRecord[] }) {
           {status === "loading" ? "Forecasting…" : "Forecast"}
         </button>
         {!valid && <span style={{ color: "var(--red)", fontSize: 13 }}>Pick a valid date.</span>}
+      </div>
+
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 10 }}>
+        <span style={{ color: "var(--ink-3)", fontSize: 12 }}>Try:</span>
+        {quickPicks().map((p) => (
+          <button
+            key={p.label}
+            onClick={() => setDate(p.date)}
+            style={{
+              background: p.date === date ? "var(--orange-soft)" : "var(--card-muted)",
+              border: `1px solid ${p.date === date ? "var(--orange)" : "var(--line)"}`,
+              color: p.date === date ? "var(--orange-deep)" : "var(--ink-2)",
+              borderRadius: 999, padding: "4px 12px", fontSize: 12, fontWeight: 600,
+              fontFamily: "inherit", cursor: "pointer",
+            }}
+          >
+            {p.label}
+          </button>
+        ))}
       </div>
 
       {status === "loading" && (

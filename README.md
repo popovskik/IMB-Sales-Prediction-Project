@@ -34,7 +34,7 @@ Two day-level prediction questions, answered honestly:
 1. **Regression** — predict `Daily_Revenue` (sum of price × quantity across a day's orders).
 2. **Classification** — predict `High_Demand_Day` (a day whose order count exceeds the year's mean daily order count).
 
-Both models use only calendar features derived from the date (no leakage). The pipeline trains a full model ladder (Dummy → linear → Decision Tree → tuned XGBoost) and reports test-set metrics with the baseline kept in the leaderboard.
+Both models use only calendar features derived from the date (no leakage). The pipeline trains a full model ladder (Dummy → linear → Decision Tree → tuned XGBoost) and reports test-set metrics with the baseline kept in the leaderboard. A SARIMA time-series benchmark (with ADF/ACF/PACF diagnostics in the report) cross-checks the regression ceiling, and the dashboard shows the ROC curve, confusion matrix, and Nov–Dec forecast-vs-actual chart.
 
 ## Architecture
 

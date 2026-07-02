@@ -90,6 +90,7 @@ fig
 
 - Day-to-day revenue swings are large; one year of data caps accuracy.
 - The calendar gives a **ballpark**, not a precise dollar figure.
+- Cross-check: a dedicated **time-series model (SARIMA)** does no better — the ceiling is the **data**, not the model class.
 - This is a **data limitation, not a modelling mistake** — and it points to the fix.
 
 ## Recommendations

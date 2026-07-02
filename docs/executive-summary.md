@@ -19,8 +19,10 @@ ahead of demand? We studied one full year (2015) of order data: about 21,000 ord
 **Why the revenue forecast is limited (stated honestly).** With only one year of data, the
 months we tested the model on (November–December) are calendar positions it had never seen
 while learning. That, plus genuine day-to-day randomness, caps how accurate a
-calendar-only revenue forecast can be. This is a data limitation, not a modelling mistake —
-and it points directly at the fix.
+calendar-only revenue forecast can be. We cross-checked with a dedicated time-series
+forecasting model (SARIMA) — it does no better, which confirms the ceiling is the data,
+not our choice of model. This is a data limitation, not a modelling mistake — and it
+points directly at the fix.
 
 **Recommendations.**
 

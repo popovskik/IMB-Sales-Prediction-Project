@@ -4,6 +4,7 @@ import {
   Tooltip, XAxis, YAxis,
 } from "recharts";
 import type { LeaderboardRow, ModelDiagnostics, Predictions } from "../types";
+import { kTick } from "../format";
 import { InfoTip } from "./InfoTip";
 
 const n = (v: number | null | undefined, d = 3) => (v == null ? "—" : v.toFixed(d));
@@ -154,7 +155,7 @@ function DiagnosticsRow({ diagnostics }: { diagnostics: ModelDiagnostics }) {
               <LineChart data={pvaData} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--line-soft)" />
                 <XAxis dataKey="date" fontSize={10} interval={13} />
-                <YAxis fontSize={11} width={46} tickFormatter={(v: number) => `$${Math.round(v / 1000)}k`} />
+                <YAxis fontSize={11} width={46} tickFormatter={kTick} />
                 <Tooltip formatter={(v: number, name: string) => [`$${v.toLocaleString()}`, name]} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Line type="monotone" dataKey="actual" name="Actual" stroke="#555" strokeWidth={1.5} dot={false} />
@@ -186,7 +187,7 @@ function DiagnosticsRow({ diagnostics }: { diagnostics: ModelDiagnostics }) {
                 <XAxis dataKey="fpr" type="number" domain={[0, 1]} fontSize={11}
                        label={{ value: "False positive rate", position: "insideBottom", offset: -12, fontSize: 11 }} />
                 <YAxis dataKey="tpr" type="number" domain={[0, 1]} fontSize={11}
-                       label={{ value: "True positive rate", angle: -90, position: "insideLeft", offset: 12, fontSize: 11 }} />
+                       label={{ value: "True positive rate", angle: -90, position: "insideLeft", offset: 12, fontSize: 11, style: { textAnchor: "middle" } }} />
                 <Tooltip formatter={(v: number, name: string) =>
                   [v.toFixed(3), name === "tpr" ? "TPR" : "FPR"]} />
                 {/* diagonal baseline */}
@@ -216,6 +217,14 @@ function DiagnosticsRow({ diagnostics }: { diagnostics: ModelDiagnostics }) {
           <p style={{ fontSize: 12, color: "var(--ink-3)", margin: "4px 0 0" }}>
             {classification.best_model ?? ""} — Nov–Dec hold-out
           </p>
+          {cm && (
+            <p style={{ fontSize: 12, color: "var(--ink-3)", margin: "6px 0 0" }}>
+              Honest note: at the default 0.5 threshold the model over-calls busy days on this
+              window — {cm[1][0]} missed busy day{cm[1][0] === 1 ? "" : "s"} but {cm[0][1]} false
+              alarm{cm[0][1] === 1 ? "" : "s"}. Cheap for staffing (over-prepare), costly if used
+              to gate spending; tuning the threshold would trade these off.
+            </p>
+          )}
         </div>
 
       </div>

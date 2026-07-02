@@ -5,6 +5,7 @@ import {
 } from "recharts";
 import type { Charts } from "../types";
 import { InfoTip } from "./InfoTip";
+import { kTick } from "../format";
 
 const ORANGE = "#ff4800";
 
@@ -58,7 +59,7 @@ export function EdaCharts({ charts }: { charts: Charts }) {
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={charts.revenue_histogram}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--line-soft)" />
-                <XAxis dataKey="bin_left" fontSize={11} tickFormatter={(v: number) => `$${Math.round(v / 1000)}k`} />
+                <XAxis dataKey="bin_left" fontSize={11} tickFormatter={kTick} />
                 <YAxis fontSize={12} width={32} />
                 <Tooltip formatter={(v: number) => `${v} days`} />
                 <Bar dataKey="count" fill={ORANGE} />
