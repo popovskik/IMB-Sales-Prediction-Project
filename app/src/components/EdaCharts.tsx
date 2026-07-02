@@ -22,7 +22,7 @@ export function EdaCharts({ charts }: { charts: Charts }) {
       <div className="eda-grid">
         <Panel title="Mean daily revenue by month"
                caption="How an average day's takings shift month to month."
-               tip={<>The average day's revenue in each month. Use it to spot <strong>seasonal trends</strong> — busier or quieter times of year.</>}>
+               tip={<>The average day's revenue in each month. Use it to spot <strong>seasonal trends</strong>: busier or quieter times of year.</>}>
           {charts.revenue_by_month?.length ? (
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={charts.revenue_by_month}>
@@ -38,7 +38,7 @@ export function EdaCharts({ charts }: { charts: Charts }) {
 
         <Panel title="Mean daily revenue by day of week"
                caption="Weekends and Fridays bring in the most."
-               tip={<>The average revenue for each weekday across the year. The clearest pattern in the data — <strong>weekends and Fridays earn the most.</strong></>}>
+               tip={<>The average revenue for each weekday across the year. The clearest pattern in the data: <strong>weekends and Fridays earn the most.</strong></>}>
           {charts.revenue_by_dow?.length ? (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={charts.revenue_by_dow}>
@@ -68,7 +68,7 @@ export function EdaCharts({ charts }: { charts: Charts }) {
           ) : <Empty label="revenue distribution" />}
         </Panel>
 
-        <Panel title="Revenue heatmap — day of week × month"
+        <Panel title="Revenue heatmap: day of week × month"
                caption="Darker = a higher-earning weekday-and-month combination."
                tip={<>Each cell is the average revenue for that weekday in that month. <strong>Darker = higher revenue.</strong> Read across a row to see a weekday over the year, or down a column to compare weekdays within a month.</>}>
           {charts.heatmap?.values?.length ? <Heatmap heat={charts.heatmap} /> : <Empty label="heatmap" />}

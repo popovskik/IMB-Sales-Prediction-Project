@@ -9,7 +9,7 @@ export function About() {
       <p style={{ color: "var(--ink-2)", marginTop: 0 }}>
         Two models were trained <strong>offline</strong> on one year (2015) of a pizza
         restaurant's orders and saved to disk. This dashboard calls a <strong>live API</strong>{" "}
-        that loads those models and predicts from whatever date you pick — no training happens
+        that loads those models and predicts from whatever date you pick, so no training happens
         when you click <em>Forecast</em>. The charts and the scorecard read pre-computed results.
         "Confidence" is how sure the busy-day model is that a day will be high-demand (50% is a
         coin-flip; closer to 100% is more certain).
@@ -24,10 +24,10 @@ export function About() {
         <div className="eyebrow" style={{ color: "var(--amber)" }}>Honest limitations</div>
         <p style={{ margin: "6px 0 0", color: "var(--ink)" }}>
           <strong>Revenue forecasts are approximate.</strong> With only one year of data and
-          large day-to-day swings, the dollar figure is a planning ballpark — not a financial
+          large day-to-day swings, the dollar figure is a planning ballpark, not a financial
           commitment. The <strong>busy-day classifier</strong> (ROC-AUC ≈ 0.74 from the calendar
-          alone) is a useful staffing aid, but a guide, not a guarantee. More years of data —
-          and signals like promotions, weather, and local events — would sharpen both.
+          alone) is a useful staffing aid, but a guide, not a guarantee. More years of data,
+          plus signals like promotions, weather, and local events, would sharpen both.
         </p>
       </div>
     </section>

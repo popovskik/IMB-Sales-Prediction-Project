@@ -49,14 +49,14 @@ export function Scorecard({ leaderboard, models, diagnostics }: {
         and ROC-AUC (demand). Baselines are kept for honesty.
       </p>
 
-      <h3 style={{ fontSize: 14, margin: "16px 0 6px" }}>Regression — daily revenue</h3>
+      <h3 style={{ fontSize: 14, margin: "16px 0 6px" }}>Regression: daily revenue</h3>
       <div style={{ overflowX: "auto" }}>
         <table>
           <thead>
             <tr>
               <th>Model</th>
               <Th tip={<><strong>Cross-validated R².</strong> How much of the day-to-day revenue swing the model explains, averaged over rolling time splits. 1.0 = perfect, 0 = no better than always guessing the average. This is the fairer score.</>}>CV R²</Th>
-              <Th tip={<><strong>Test R²</strong> on the held-out Nov–Dec window. Low/negative here because those months are calendar positions the model never trained on — see the note above.</>}>Test R²</Th>
+              <Th tip={<><strong>Test R²</strong> on the held-out Nov–Dec window. Low/negative here because those months are calendar positions the model never trained on. See the note above.</>}>Test R²</Th>
               <Th tip={<><strong>Mean Absolute Error.</strong> On average, the prediction is off by about this many dollars (lower is better).</>}>Test MAE</Th>
               <Th tip={<><strong>Root Mean Squared Error.</strong> Like MAE but punishes big misses more (lower is better), in dollars.</>}>Test RMSE</Th>
               <Th tip={<><strong>Train R².</strong> Fit on the data the model learned from. Much higher than CV/Test = the model is <strong>overfitting</strong> (memorising, not generalising).</>} align="end">Train R²</Th>
@@ -74,7 +74,7 @@ export function Scorecard({ leaderboard, models, diagnostics }: {
         </table>
       </div>
 
-      <h3 style={{ fontSize: 14, margin: "20px 0 6px" }}>Classification — high-demand day</h3>
+      <h3 style={{ fontSize: 14, margin: "20px 0 6px" }}>Classification: high-demand day</h3>
       <div style={{ overflowX: "auto" }}>
         <table>
           <thead>
@@ -82,7 +82,7 @@ export function Scorecard({ leaderboard, models, diagnostics }: {
               <th>Model</th>
               <Th tip={<><strong>Cross-validated F1.</strong> A balance of catching busy days (recall) and not crying wolf (precision), averaged over time splits. Higher is better.</>}>CV F1</Th>
               <Th tip={<><strong>Accuracy.</strong> Share of days the busy/not-busy call was correct on the held-out window. Can mislead when days aren't 50/50.</>}>Test Acc</Th>
-              <Th tip={<><strong>F1 score</strong> on the held-out window. Note the "always say busy" baseline scores a deceptively high F1 — which is why we judge by ROC-AUC instead.</>}>Test F1</Th>
+              <Th tip={<><strong>F1 score</strong> on the held-out window. Note the "always say busy" baseline scores a deceptively high F1, which is why we judge by ROC-AUC instead.</>}>Test F1</Th>
               <Th tip={<><strong>ROC-AUC.</strong> The honest headline metric: probability the model ranks a real busy day above a quiet one. 0.50 = coin-flip, 1.0 = perfect. The deployed model reaches ~0.74.</>} align="end">ROC-AUC</Th>
             </tr>
           </thead>
@@ -146,7 +146,7 @@ function DiagnosticsRow({ diagnostics }: { diagnostics: ModelDiagnostics }) {
             <InfoTip placement="bottom">
               <>Daily revenue on the <strong>Nov–Dec hold-out</strong>. Grey = actual,
               orange = XGBoost (calendar features only), blue dashed = SARIMA (time-series model).
-              Both models track the weekly rhythm but miss the absolute level — consistent
+              Both models track the weekly rhythm but miss the absolute level, consistent
               with near-zero test R².</>
             </InfoTip>
           </div>
@@ -165,14 +165,14 @@ function DiagnosticsRow({ diagnostics }: { diagnostics: ModelDiagnostics }) {
             </ResponsiveContainer>
           ) : <span style={{ color: "var(--ink-3)", fontSize: 13 }}>No data.</span>}
           <p style={{ fontSize: 12, color: "var(--ink-3)", margin: "4px 0 0" }}>
-            {regression.best_model ?? ""} vs SARIMA — 61-day hold-out
+            {regression.best_model ?? ""} vs SARIMA: 61-day hold-out
           </p>
         </div>
 
         {/* ROC curve */}
         <div>
           <div style={{ fontWeight: 600, fontSize: 13, color: "var(--ink-2)", marginBottom: 6, display: "flex", alignItems: "center" }}>
-            ROC curve — classifier
+            ROC curve: classifier
             <InfoTip placement="bottom">
               <>The <strong>ROC curve</strong> shows the trade-off between catching real
               busy days (true-positive rate) and false alarms (false-positive rate) as the
@@ -198,7 +198,7 @@ function DiagnosticsRow({ diagnostics }: { diagnostics: ModelDiagnostics }) {
             </ResponsiveContainer>
           ) : <span style={{ color: "var(--ink-3)", fontSize: 13 }}>No data.</span>}
           <p style={{ fontSize: 12, color: "var(--ink-3)", margin: "4px 0 0" }}>
-            {classification.best_model ?? ""} — AUC {classification.roc_auc?.toFixed(3) ?? "—"}
+            {classification.best_model ?? ""}: AUC {classification.roc_auc?.toFixed(3) ?? "—"}
           </p>
         </div>
 
@@ -215,12 +215,12 @@ function DiagnosticsRow({ diagnostics }: { diagnostics: ModelDiagnostics }) {
           </div>
           {cm ? <ConfusionMatrix cm={cm} /> : <span style={{ color: "var(--ink-3)", fontSize: 13 }}>No data.</span>}
           <p style={{ fontSize: 12, color: "var(--ink-3)", margin: "4px 0 0" }}>
-            {classification.best_model ?? ""} — Nov–Dec hold-out
+            {classification.best_model ?? ""}: Nov–Dec hold-out
           </p>
           {cm && (
             <p style={{ fontSize: 12, color: "var(--ink-3)", margin: "6px 0 0" }}>
               Honest note: at the default 0.5 threshold the model over-calls busy days on this
-              window — {cm[1][0]} missed busy day{cm[1][0] === 1 ? "" : "s"} but {cm[0][1]} false
+              window: {cm[1][0]} missed busy day{cm[1][0] === 1 ? "" : "s"} but {cm[0][1]} false
               alarm{cm[0][1] === 1 ? "" : "s"}. Cheap for staffing (over-prepare), costly if used
               to gate spending; tuning the threshold would trade these off.
             </p>

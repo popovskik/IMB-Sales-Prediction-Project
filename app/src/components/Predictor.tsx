@@ -49,7 +49,7 @@ export function Predictor({ daily }: { daily: DailyRecord[] }) {
       if (fb) {
         setResult(fb);
         setStatus("fallback");
-        setNote("Live predictor is waking up or unavailable — showing the pre-computed estimate for this date.");
+        setNote("Live predictor is waking up or unavailable, showing the pre-computed estimate for this date.");
       } else {
         setResult(null);
         setStatus("fallback");
@@ -66,7 +66,7 @@ export function Predictor({ daily }: { daily: DailyRecord[] }) {
       <div className="eyebrow">Predictor</div>
       <h2 style={{ fontSize: 20, margin: "4px 0 6px" }}>Forecast a day</h2>
       <p style={{ color: "var(--ink-2)", fontSize: 13, margin: "0 0 14px" }}>
-        Pick any date — past or future. The model needs only the calendar, so it can forecast
+        Pick any date, past or future. The model needs only the calendar, so it can forecast
         next Friday as easily as a 2015 day (future dates carry an extrapolation note).
       </p>
 
@@ -107,7 +107,7 @@ export function Predictor({ daily }: { daily: DailyRecord[] }) {
       {status === "loading" && (
         <p style={{ color: "var(--ink-2)", marginTop: 14 }}>
           {slow
-            ? "Waking the prediction server — the first request can take up to ~30s on a free-tier host. Hang tight…"
+            ? "Waking the prediction server: the first request can take up to ~30s on a free-tier host. Hang tight…"
             : "Forecasting…"}
         </p>
       )}
@@ -143,7 +143,7 @@ export function Predictor({ daily }: { daily: DailyRecord[] }) {
           </div>
           {result.out_of_training_range && (
             <p style={{ color: "var(--amber)", fontSize: 13, marginTop: 10, marginBottom: 0 }}>
-              Note: this date is outside the model's 2015 training year — treat as a rough extrapolation.
+              Note: this date is outside the model's 2015 training year, so treat it as a rough extrapolation.
             </p>
           )}
         </div>

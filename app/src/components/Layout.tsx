@@ -40,13 +40,13 @@ export function Layout({ children, summary }: { children: ReactNode; summary?: C
           {summary && (
             <div className="stat-grid">
               <Stat label="Total revenue" value={money(summary.total_revenue)}
-                    tip={<>Total money taken across the whole year (2015) — every order's <strong>price × quantity</strong>, summed.</>} />
+                    tip={<>Total money taken across the whole year (2015): every order's <strong>price × quantity</strong>, summed.</>} />
               <Stat label="Avg daily revenue" value={money(summary.mean_daily_revenue)}
                     tip={<>The average day's revenue across all 365 days. A typical day brings in about this much.</>} />
               <Stat label="Avg daily orders" value={summary.mean_daily_orders.toFixed(0)}
                     tip={<>The average number of orders placed per day across the year.</>} />
               <Stat label="High-demand days" value={`${Math.round(summary.high_demand_share * 100)}%`} align="end"
-                    tip={<>Share of days we call <strong>"high demand"</strong> — days whose order count is above the year's average. These are the days to staff and stock up for.</>} />
+                    tip={<>Share of days we call <strong>"high demand"</strong>: days whose order count is above the year's average. These are the days to staff and stock up for.</>} />
             </div>
           )}
 
