@@ -5,10 +5,12 @@ let closeActive: (() => void) | null = null;
 
 type Pos = { top: number; left: number; arrowLeft: number; above: boolean };
 
-/** Small "i" button that opens an explanatory bubble on tap/click.
+/** Small "i" button that explains a number or concept.
+ *  Hover reveals the bubble transiently (it closes when the pointer leaves);
+ *  a click pins it open until you close it, tap outside, or press Escape.
  *  The bubble is position: fixed and clamped to the viewport, so it can never
  *  be clipped by a card edge or a horizontally scrolled table; it repositions
- *  itself on every scroll and resize so it stays attached to its icon. */
+ *  on every scroll and resize so it stays attached to its icon. */
 export function InfoTip({
   children,
   placement = "top",
@@ -19,19 +21,44 @@ export function InfoTip({
   align?: "center" | "end";
 }) {
   const [open, setOpen] = useState(false);
+  const [pinned, setPinned] = useState(false);
   const [pos, setPos] = useState<Pos | null>(null);
   const rootRef = useRef<HTMLSpanElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
-  const closeSelf = useRef(() => setOpen(false)).current;
 
-  function toggle() {
-    if (open) {
+  // Stable, self-referencing close so it can clear the single-open slot.
+  const closeRef = useRef<(() => void) | null>(null);
+  if (!closeRef.current) {
+    closeRef.current = () => {
       setOpen(false);
-      if (closeActive === closeSelf) closeActive = null;
+      setPinned(false);
+      if (closeActive === closeRef.current) closeActive = null;
+    };
+  }
+  const closeSelf = closeRef.current;
+
+  function openTip() {
+    if (open) return;
+    closeActive?.();          // close whichever other bubble is showing
+    closeActive = closeSelf;
+    setOpen(true);
+  }
+
+  // Hover: show transiently. Leaving hides it unless a click has pinned it.
+  function handleEnter() {
+    if (!pinned) openTip();
+  }
+  function handleLeave() {
+    if (!pinned) closeSelf();
+  }
+
+  // Click: pin it open, or unpin+close if already pinned.
+  function handleClick() {
+    if (pinned) {
+      closeSelf();
     } else {
-      closeActive?.();
-      closeActive = closeSelf;
-      setOpen(true);
+      openTip();
+      setPinned(true);
     }
   }
 
@@ -72,9 +99,10 @@ export function InfoTip({
     };
   }, [open, placement]);
 
-  // Tap outside or press Escape to close.
+  // When pinned: tap outside or press Escape to close. (Hover-only bubbles
+  // close on mouse-leave, so these listeners only matter once pinned.)
   useEffect(() => {
-    if (!open) return;
+    if (!pinned) return;
     const onDown = (e: PointerEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) closeSelf();
     };
@@ -87,7 +115,7 @@ export function InfoTip({
       document.removeEventListener("pointerdown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open, closeSelf]);
+  }, [pinned, closeSelf]);
 
   // Release the single-open slot if this tip unmounts while open.
   useEffect(
@@ -98,8 +126,16 @@ export function InfoTip({
   );
 
   return (
-    <span className="infotip" ref={rootRef}>
-      <button type="button" className="infotip-icon" aria-expanded={open} aria-label="Explanation" onClick={toggle}>
+    <span className="infotip" ref={rootRef} onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
+      <button
+        type="button"
+        className="infotip-icon"
+        aria-expanded={open}
+        aria-label="Explanation"
+        onClick={handleClick}
+        onFocus={openTip}
+        onBlur={() => { if (!pinned) closeSelf(); }}
+      >
         i
       </button>
       {open && (
@@ -109,17 +145,11 @@ export function InfoTip({
           ref={bubbleRef}
           style={{ top: pos?.top ?? 0, left: pos?.left ?? 0, visibility: pos ? "visible" : "hidden" }}
         >
-          <button
-            type="button"
-            className="infotip-close"
-            aria-label="Close"
-            onClick={() => {
-              setOpen(false);
-              if (closeActive === closeSelf) closeActive = null;
-            }}
-          >
-            ×
-          </button>
+          {pinned && (
+            <button type="button" className="infotip-close" aria-label="Close" onClick={closeSelf}>
+              ×
+            </button>
+          )}
           {children}
           {pos && (
             <span
